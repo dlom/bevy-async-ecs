@@ -1,0 +1,16 @@
+[package]
+name = "bevy-async-ecs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy_ecs = "0.12"
+bevy_app = "0.12"
+bevy_core = "0.12"
+bevy_log = "0.12"
+async-channel = "1.9"
+
+[dev-dependencies]
+futures-lite = "1.13"
