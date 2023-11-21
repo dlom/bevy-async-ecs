@@ -138,7 +138,7 @@ mod tests {
 		std::thread::spawn(move || {
 			future::block_on(async move {
 				let entity = async_world.spawn_empty().await;
-				sender.send(entity.id).await.unwrap();
+				sender.send(entity.id()).await.unwrap();
 			});
 		});
 

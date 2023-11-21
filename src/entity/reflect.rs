@@ -364,4 +364,36 @@ mod tests {
 		assert_eq!(4, translation.0);
 		assert_eq!(5, translation.1);
 	}
+
+	#[test]
+	fn wait_for_immediate() {
+		let mut app = App::new();
+		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
+
+		app.register_type::<Translation>()
+			.register_type::<Scale>()
+			.register_type::<Transform>();
+
+		let id = app.world.spawn(Translation(1, 2)).id();
+		let (translation_tx, translation_rx) = async_channel::bounded(1);
+		let async_world = AsyncWorld::from_world(&mut app.world);
+
+		std::thread::spawn(move || {
+			future::block_on(async move {
+				let entity = async_world.entity(id);
+				let translation = entity.wait_for::<Translation>().await;
+				translation_tx.send(translation).await.unwrap();
+			});
+		});
+
+		let translation = loop {
+			match translation_rx.try_recv() {
+				Ok(translation) => break translation,
+				Err(_) => app.update(),
+			}
+		};
+
+		assert_eq!(1, translation.0);
+		assert_eq!(2, translation.1);
+	}
 }

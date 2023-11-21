@@ -190,4 +190,33 @@ mod tests {
 
 		assert_eq!(3, value);
 	}
+
+	#[test]
+	fn wait_for_immediate() {
+		let mut app = App::new();
+		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
+		app.register_type::<Counter>();
+
+		app.insert_resource(Counter(1));
+
+		let async_world = AsyncWorld::from_world(&mut app.world);
+		let (value_tx, value_rx) = async_channel::bounded(1);
+
+		std::thread::spawn(move || {
+			future::block_on(async move {
+				let counter = async_world.wait_for_resource::<Counter>().await;
+				value_tx.send(counter.0).await.unwrap();
+			});
+		});
+
+		let value = loop {
+			match value_rx.try_recv() {
+				Ok(value) => break value,
+				Err(_) => app.update(),
+			}
+		};
+		app.update();
+
+		assert_eq!(1, value);
+	}
 }
