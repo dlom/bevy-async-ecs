@@ -69,6 +69,7 @@ impl From<ReflectOperation> for AsyncOperation {
 	}
 }
 
+/// Represents a `Component` being retrieved.
 pub struct AsyncComponent<T: Component + FromReflect>(Receiver<Box<dyn Reflect>>, PhantomData<T>);
 
 impl<C: Component + FromReflect> AsyncComponent<C> {
@@ -76,6 +77,7 @@ impl<C: Component + FromReflect> AsyncComponent<C> {
 		Self(receiver, PhantomData)
 	}
 
+	/// Wait for the `Component` to exist, and retrieve its value.
 	pub async fn wait(self) -> C {
 		let boxed_dynamic = self.0.recv().await.expect("invariant broken");
 		C::take_from_reflect(boxed_dynamic).expect("invariant broken")

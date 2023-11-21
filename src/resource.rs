@@ -74,6 +74,7 @@ pub(crate) fn wait_for_reflect_resources(
 	}
 }
 
+/// Represents a `Resource` being retrieved.
 pub struct AsyncResource<R>(Receiver<Box<dyn Reflect>>, PhantomData<R>);
 
 impl<R: Resource + FromReflect> AsyncResource<R> {
@@ -81,6 +82,7 @@ impl<R: Resource + FromReflect> AsyncResource<R> {
 		Self(receiver, PhantomData)
 	}
 
+	/// Wait for the `Resource` to exist, and retrieve its value.
 	pub async fn wait(self) -> R {
 		let boxed_dynamic = self.0.recv().await.expect("invariant broken");
 		R::take_from_reflect(boxed_dynamic).expect("invariant broken")

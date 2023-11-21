@@ -1,11 +1,16 @@
 [package]
 name = "bevy-async-ecs"
 version = "0.1.0"
+authors =  ["Mark Old <dlom234@gmail.com>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+description = "Asynchronous interface for Bevy ECS"
+repository = "https://github.com/dlom/bevy-async-ecs"
+keywords = ["bevy", "ecs", "async", "game"]
+categories = ["game-engines", "asynchronous"]
 
 [dependencies]
+# TODO: stop tracking git once 0.12.1 releases
 bevy = { version = "0.12", git = "https://github.com/bevyengine/bevy", rev="951c9bb1a25caddc97ac69bbe8a2937f97227e90", default-features = false }
 async-channel = "1"
 

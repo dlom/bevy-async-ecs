@@ -43,13 +43,14 @@ impl From<SystemOperation> for AsyncOperation {
 	}
 }
 
+/// Represents a registered `System` that can be run asynchronously.
 pub struct AsyncSystem {
 	id: SystemId,
 	sender: OperationSender,
 }
 
 impl AsyncSystem {
-	pub(super) async fn new(system: BoxedSystem, sender: OperationSender) -> Self {
+	pub(crate) async fn new(system: BoxedSystem, sender: OperationSender) -> Self {
 		let (id_sender, id_receiver) = async_channel::bounded(1);
 
 		let operation = SystemOperation::Register(system, id_sender);
@@ -59,11 +60,14 @@ impl AsyncSystem {
 		Self { id, sender }
 	}
 
+	/// Run the system.
 	pub async fn run(&self) {
 		self.sender.send(SystemOperation::Run(self.id)).await;
 	}
 }
 
+/// Represents a registered `System` that accepts input and returns output, and can be run
+/// asynchronously.
 pub struct AsyncIOSystem<I: Send, O: Send> {
 	beacon_location: Entity,
 	sender: Sender<Box<dyn Any + Send>>,
@@ -73,7 +77,7 @@ pub struct AsyncIOSystem<I: Send, O: Send> {
 }
 
 impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
-	pub(super) async fn new<M>(system: impl IntoSystem<I, O, M>, sender: OperationSender) -> Self {
+	pub(crate) async fn new<M>(system: impl IntoSystem<I, O, M>, sender: OperationSender) -> Self {
 		let (in_tx, in_rx) = async_channel::unbounded();
 		let (out_tx, out_rx) = async_channel::unbounded();
 		let async_io = AsyncIO(in_rx, out_tx);
@@ -114,6 +118,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 		}
 	}
 
+	/// Run the system.
 	pub async fn run(&self, i: I) -> O {
 		let i = Box::new(i);
 		self.sender.send(i).await.expect("invariant broken");
@@ -135,7 +140,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 }
 
 #[derive(Component)]
-pub(super) struct AsyncIO(Receiver<Box<dyn Any + Send>>, Sender<Box<dyn Any + Send>>);
+pub(crate) struct AsyncIO(Receiver<Box<dyn Any + Send>>, Sender<Box<dyn Any + Send>>);
 
 #[derive(Component)]
 #[component(storage = "SparseSet")]

@@ -34,6 +34,10 @@ impl Command for EntityOperation {
 	}
 }
 
+/// Represents an `Entity` that can be manipulated asynchronously.
+///
+/// Dropping the `AsyncEntity` **WILL NOT** despawn the corresponding entity in the synchronous world.
+/// Use `AsyncEntity::despawn` to despawn an entity asynchronously.
 pub struct AsyncEntity {
 	id: Entity,
 	sender: OperationSender,
@@ -46,15 +50,16 @@ impl From<EntityOperation> for AsyncOperation {
 }
 
 impl AsyncEntity {
+	/// Returns the underlying `Entity` being represented.
 	pub fn id(&self) -> Entity {
 		self.id
 	}
 
-	pub(super) fn new(id: Entity, sender: OperationSender) -> Self {
+	pub(crate) fn new(id: Entity, sender: OperationSender) -> Self {
 		Self { id, sender }
 	}
 
-	pub(super) async fn new_empty(sender: OperationSender) -> Self {
+	pub(crate) async fn new_empty(sender: OperationSender) -> Self {
 		let (id_sender, id_receiver) = async_channel::bounded(1);
 
 		let operation = EntityOperation::SpawnEmpty(id_sender);
@@ -64,7 +69,7 @@ impl AsyncEntity {
 		Self { id, sender }
 	}
 
-	pub(super) async fn new_named(name: CowStr, sender: OperationSender) -> Self {
+	pub(crate) async fn new_named(name: CowStr, sender: OperationSender) -> Self {
 		let (id_sender, id_receiver) = async_channel::bounded(1);
 
 		let operation = EntityOperation::SpawnNamed(name, id_sender);
@@ -74,7 +79,7 @@ impl AsyncEntity {
 		Self { id, sender }
 	}
 
-	pub(super) async fn new_bundle(bundle: Box<dyn Reflect>, sender: OperationSender) -> Self {
+	pub(crate) async fn new_bundle(bundle: Box<dyn Reflect>, sender: OperationSender) -> Self {
 		let (id_sender, id_receiver) = async_channel::bounded(1);
 
 		let operation = ReflectOperation::SpawnWithBundle(bundle, id_sender);
@@ -84,30 +89,41 @@ impl AsyncEntity {
 		Self { id, sender }
 	}
 
+	/// Despawns the represented entity.
 	pub async fn despawn(self) {
 		self.sender.send(EntityOperation::Despawn(self.id)).await;
 	}
 
+	/// Adds a `Component` to the entity. This will overwrite any previous value(s) of the same component type.
 	pub async fn insert_component<C: Component + Reflect>(&self, component: C) {
 		let operation = ReflectOperation::InsertComponent(self.id, Box::new(component));
 		self.sender.send(operation).await;
 	}
 
+	/// Adds a `Bundle` of components to the entity. This will overwrite any previous value(s) of
+	/// the same component type.
 	pub async fn insert_bundle<B: Bundle + Reflect>(&self, bundle: B) {
 		let operation = ReflectOperation::InsertBundle(self.id, Box::new(bundle));
 		self.sender.send(operation).await;
 	}
 
+	/// Removes a `Component` from the entity.
 	pub async fn remove_component<C: Component + Reflect>(&self) {
 		let operation = ReflectOperation::RemoveComponent(self.id, TypeId::of::<C>());
 		self.sender.send(operation).await;
 	}
 
+	/// Removes a `Bundle` of components from the entity.
 	pub async fn remove_bundle<B: Bundle + Reflect>(&self) {
 		let operation = ReflectOperation::RemoveBundle(self.id, TypeId::of::<B>());
 		self.sender.send(operation).await;
 	}
 
+	/// Start waiting for the `Component` of a given type. Returns an `AsyncComponent` which can be further
+	/// waited to receive the value of the component.
+	///
+	/// `AsyncComponent::wait_for().await` is equivalent to
+	/// `AsyncComponent::start_waiting_for().await.wait().await`.
 	pub async fn start_waiting_for<C: Component + FromReflect>(&self) -> AsyncComponent<C> {
 		let (sender, receiver) = async_channel::bounded(1);
 		let operation = ReflectOperation::WaitForComponent(self.id, TypeId::of::<C>(), sender);
@@ -115,6 +131,11 @@ impl AsyncEntity {
 		AsyncComponent::new(receiver)
 	}
 
+	/// Wait for the `Component` of a given type. Returns the value of the component, once it exists
+	/// on the represented entity.
+	///
+	/// `AsyncComponent::wait_for().await` is equivalent to
+	/// `AsyncComponent::start_waiting_for().await.wait().await`.
 	pub async fn wait_for<C: Component + FromReflect>(&self) -> C {
 		self.start_waiting_for().await.wait().await
 	}

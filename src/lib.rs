@@ -1,3 +1,6 @@
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
+
 mod command;
 mod entity;
 mod resource;
@@ -20,6 +23,7 @@ pub use world::AsyncWorld;
 
 type CowStr = Cow<'static, str>;
 
+/// Adds asynchronous ECS operations to Apps.
 pub struct AsyncEcsPlugin;
 
 impl Plugin for AsyncEcsPlugin {
