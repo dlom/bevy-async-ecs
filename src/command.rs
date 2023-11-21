@@ -2,7 +2,7 @@ use crate::AsyncOperation;
 use bevy::ecs::system::{Command, CommandQueue};
 use bevy::prelude::*;
 
-pub struct BoxedCommand(CommandQueue);
+pub(crate) struct BoxedCommand(CommandQueue);
 
 impl BoxedCommand {
 	pub fn new<C: Command>(inner: C) -> Self {

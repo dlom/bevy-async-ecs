@@ -1,13 +1,14 @@
 use super::EntityOperation;
 use crate::AsyncOperation;
-use async_channel::Sender;
+use async_channel::{Receiver, Sender};
 use bevy::ecs::reflect::ReflectBundle;
 use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use bevy::reflect::TypeRegistry;
 use std::any::TypeId;
+use std::marker::PhantomData;
 
-pub enum ReflectOperation {
+pub(crate) enum ReflectOperation {
 	InsertComponent(Entity, Box<dyn Reflect>),
 	InsertBundle(Entity, Box<dyn Reflect>),
 	RemoveComponent(Entity, TypeId),
@@ -68,10 +69,23 @@ impl From<ReflectOperation> for AsyncOperation {
 	}
 }
 
-#[derive(Component)]
-pub struct WaitingFor(TypeId, Sender<Box<dyn Reflect>>);
+pub struct AsyncComponent<T: Component + FromReflect>(Receiver<Box<dyn Reflect>>, PhantomData<T>);
 
-pub fn wait_for_reflect_components(
+impl<C: Component + FromReflect> AsyncComponent<C> {
+	pub(crate) fn new(receiver: Receiver<Box<dyn Reflect>>) -> Self {
+		Self(receiver, PhantomData)
+	}
+
+	pub async fn wait(self) -> C {
+		let boxed_dynamic = self.0.recv().await.expect("invariant broken");
+		C::take_from_reflect(boxed_dynamic).expect("invariant broken")
+	}
+}
+
+#[derive(Component)]
+pub(crate) struct WaitingFor(TypeId, Sender<Box<dyn Reflect>>);
+
+pub(crate) fn wait_for_reflect_components(
 	mut commands: Commands,
 	query: Query<(Entity, &WaitingFor)>,
 	registry: Res<AppTypeRegistry>,

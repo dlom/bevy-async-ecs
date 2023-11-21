@@ -1,10 +1,12 @@
 mod command;
 mod entity;
+mod resource;
 mod system;
 mod world;
 
 use crate::command::BoxedCommand;
 use crate::entity::{wait_for_reflect_components, EntityOperation};
+use crate::resource::{wait_for_reflect_resources, ResourceOperation};
 use crate::system::SystemOperation;
 use async_channel::{Receiver, Sender, TryRecvError};
 use bevy::ecs::system::Command;
@@ -12,6 +14,7 @@ use bevy::prelude::*;
 use std::borrow::Cow;
 
 pub use entity::{AsyncComponent, AsyncEntity};
+pub use resource::AsyncResource;
 pub use system::{AsyncIOSystem, AsyncSystem};
 pub use world::AsyncWorld;
 
@@ -26,7 +29,10 @@ impl Plugin for AsyncEcsPlugin {
 				Last,
 				(receive_operations, apply_operations, apply_deferred).chain(),
 			)
-			.add_systems(PostUpdate, wait_for_reflect_components);
+			.add_systems(
+				PostUpdate,
+				(wait_for_reflect_components, wait_for_reflect_resources),
+			);
 	}
 }
 
@@ -34,8 +40,7 @@ enum AsyncOperation {
 	Command(BoxedCommand),
 	System(SystemOperation),
 	Entity(EntityOperation),
-	Event,
-	Resource,
+	Resource(ResourceOperation),
 }
 
 impl Command for AsyncOperation {
@@ -44,9 +49,7 @@ impl Command for AsyncOperation {
 			AsyncOperation::Command(command) => command.apply(world),
 			AsyncOperation::System(system_op) => system_op.apply(world),
 			AsyncOperation::Entity(entity_op) => entity_op.apply(world),
-			// AsyncOperation::Event => {}
-			// AsyncOperation::Resource => {}
-			_ => unimplemented!(),
+			AsyncOperation::Resource(resource_op) => resource_op.apply(world),
 		}
 	}
 }

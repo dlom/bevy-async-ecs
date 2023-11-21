@@ -1,9 +1,12 @@
-use bevy::prelude::{Bundle, Entity, FromWorld, IntoSystem, Reflect, World};
-use bevy::core::Name;
-use bevy::ecs::system::Command;
-use std::borrow::Cow;
-use crate::{AsyncEntity, AsyncIOSystem, AsyncSystem, OperationReceiver, OperationSender};
 use crate::command::BoxedCommand;
+use crate::resource::ResourceOperation;
+use crate::{
+	AsyncEntity, AsyncIOSystem, AsyncResource, AsyncSystem, OperationReceiver, OperationSender,
+};
+use bevy::ecs::system::Command;
+use bevy::prelude::*;
+use std::any::TypeId;
+use std::borrow::Cow;
 
 #[derive(Clone)]
 pub struct AsyncWorld(OperationSender);
@@ -39,6 +42,27 @@ impl AsyncWorld {
 
 	pub async fn spawn<B: Bundle + Reflect>(&self, bundle: B) -> AsyncEntity {
 		AsyncEntity::new_bundle(Box::new(bundle), self.0.clone()).await
+	}
+
+	pub async fn insert_resource<R: Resource + Reflect>(&self, resource: R) {
+		let operation = ResourceOperation::Insert(Box::new(resource));
+		self.0.send(operation).await;
+	}
+
+	pub async fn remove_resource<R: Resource + Reflect>(&self) {
+		let operation = ResourceOperation::Remove(TypeId::of::<R>());
+		self.0.send(operation).await;
+	}
+
+	pub async fn start_waiting_for_resource<R: Resource + FromReflect>(&self) -> AsyncResource<R> {
+		let (sender, receiver) = async_channel::bounded(1);
+		let operation = ResourceOperation::WaitFor(TypeId::of::<R>(), sender);
+		self.0.send(operation).await;
+		AsyncResource::new(receiver)
+	}
+
+	pub async fn wait_for_resource<R: Resource + FromReflect>(&self) -> R {
+		self.start_waiting_for_resource().await.wait().await
 	}
 }
 

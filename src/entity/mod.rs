@@ -1,16 +1,16 @@
 mod reflect;
 
 use crate::{AsyncOperation, CowStr, OperationSender};
-use async_channel::{Receiver, Sender};
+use async_channel::Sender;
 use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use reflect::ReflectOperation;
 use std::any::TypeId;
-use std::marker::PhantomData;
 
-pub use reflect::wait_for_reflect_components;
+pub(crate) use reflect::wait_for_reflect_components;
+pub use reflect::AsyncComponent;
 
-pub enum EntityOperation {
+pub(crate) enum EntityOperation {
 	SpawnEmpty(Sender<Entity>),
 	SpawnNamed(CowStr, Sender<Entity>),
 	Despawn(Entity),
@@ -112,7 +112,7 @@ impl AsyncEntity {
 		let (sender, receiver) = async_channel::bounded(1);
 		let operation = ReflectOperation::WaitForComponent(self.id, TypeId::of::<C>(), sender);
 		self.sender.send(operation).await;
-		AsyncComponent(receiver, PhantomData)
+		AsyncComponent::new(receiver)
 	}
 
 	pub async fn wait_for<C: Component + FromReflect>(&self) -> C {
@@ -120,21 +120,12 @@ impl AsyncEntity {
 	}
 }
 
-pub struct AsyncComponent<T: Component + FromReflect>(Receiver<Box<dyn Reflect>>, PhantomData<T>);
-
-impl<C: Component + FromReflect> AsyncComponent<C> {
-	pub async fn wait(self) -> C {
-		let boxed_dynamic = self.0.recv().await.expect("invariant broken");
-		C::take_from_reflect(boxed_dynamic).expect("invariant broken")
-	}
-}
-
 #[cfg(test)]
 mod tests {
+	use crate::world::AsyncWorld;
 	use crate::AsyncEcsPlugin;
 	use bevy::prelude::*;
 	use futures_lite::future;
-	use crate::world::AsyncWorld;
 
 	#[test]
 	fn smoke() {

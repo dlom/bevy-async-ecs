@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use std::any::Any;
 use std::marker::PhantomData;
 
-pub(super) enum SystemOperation {
+pub(crate) enum SystemOperation {
 	Register(BoxedSystem, Sender<SystemId>),
 	RegisterIO(AsyncIO, Sender<Entity>),
 	MarkBeacon(Entity),
