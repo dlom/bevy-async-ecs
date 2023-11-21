@@ -127,8 +127,7 @@ pub struct AsyncWorld(OperationSender);
 
 impl AsyncWorld {
 	pub async fn apply_command<C: Command>(&self, command: C) {
-		let operation = AsyncOperation::Command(BoxedCommand::new(command));
-		self.0.send(operation).await;
+		self.0.send(BoxedCommand::new(command)).await;
 	}
 
 	pub async fn register_system<M>(&self, system: impl IntoSystem<(), (), M>) -> AsyncSystem {

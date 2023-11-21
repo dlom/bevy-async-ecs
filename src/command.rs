@@ -1,3 +1,4 @@
+use crate::AsyncOperation;
 use bevy::ecs::system::{Command, CommandQueue};
 use bevy::prelude::*;
 
@@ -16,5 +17,11 @@ impl BoxedCommand {
 impl Command for BoxedCommand {
 	fn apply(mut self, world: &mut World) {
 		self.0.apply(world);
+	}
+}
+
+impl From<BoxedCommand> for AsyncOperation {
+	fn from(command: BoxedCommand) -> Self {
+		Self::Command(command)
 	}
 }

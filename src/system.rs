@@ -199,7 +199,7 @@ mod tests {
 
 		loop {
 			match barrier_rx.try_recv() {
-				Ok(value) => break,
+				Ok(_) => break,
 				Err(_) => app.update(),
 			}
 		}
@@ -218,7 +218,7 @@ mod tests {
 		let (sender, receiver) = async_channel::bounded(1);
 		let async_world = AsyncWorld::from_world(&mut app.world);
 
-		let thread = std::thread::spawn(move || {
+		std::thread::spawn(move || {
 			future::block_on(async move {
 				let increase_counter = async_world
 					.register_io_system::<Entity, (), _>(increase_counter)

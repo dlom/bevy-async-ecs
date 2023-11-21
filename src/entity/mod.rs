@@ -206,7 +206,7 @@ mod tests {
 
 		loop {
 			match receiver.try_recv() {
-				Ok(value) => break,
+				Ok(_) => break,
 				Err(_) => app.update(),
 			}
 		}
