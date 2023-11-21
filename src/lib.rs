@@ -3,12 +3,15 @@ mod entity;
 mod system;
 
 use crate::command::BoxedCommand;
-use crate::entity::{wait_for_reflect_components, AsyncEntity, EntityOperation};
-use crate::system::{AsyncIOSystem, AsyncSystem, SystemOperation};
+use crate::entity::{wait_for_reflect_components, EntityOperation};
+use crate::system::SystemOperation;
 use async_channel::{Receiver, Sender, TryRecvError};
 use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use std::borrow::Cow;
+
+pub use entity::{AsyncComponent, AsyncEntity};
+pub use system::{AsyncIOSystem, AsyncSystem};
 
 type CowStr = Cow<'static, str>;
 
@@ -167,8 +170,9 @@ impl FromWorld for AsyncWorld {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use bevy::MinimalPlugins;
+
+	use super::*;
 
 	#[derive(Component)]
 	struct Marker;
