@@ -1,34 +1,34 @@
 mod command;
+mod entity;
 mod system;
 
 use crate::command::BoxedCommand;
-use crate::system::{AsyncSystem, SystemOperation};
+use crate::entity::{wait_for_reflect_components, AsyncEntity, EntityOperation};
+use crate::system::{AsyncIOSystem, AsyncSystem, SystemOperation};
 use async_channel::{Receiver, Sender, TryRecvError};
-use bevy::app::{App, First, Plugin};
-use bevy::core::Name;
-use bevy::ecs::component::Component;
-use bevy::ecs::entity::Entity;
-use bevy::ecs::schedule::{apply_deferred, IntoSystemConfigs};
-use bevy::ecs::system::{Command, Commands, Query, ResMut, Resource};
-use bevy::ecs::world::{FromWorld, World};
-use bevy::log::debug;
-use bevy::prelude::IntoSystem;
+use bevy::ecs::system::Command;
+use bevy::prelude::*;
+use std::borrow::Cow;
+
+type CowStr = Cow<'static, str>;
 
 pub struct AsyncEcsPlugin;
 
 impl Plugin for AsyncEcsPlugin {
 	fn build(&self, app: &mut App) {
-		app.init_resource::<OperationQueue>().add_systems(
-			First,
-			(receive_operations, apply_operations, apply_deferred).chain(),
-		);
+		app.init_resource::<OperationQueue>()
+			.add_systems(
+				Last,
+				(receive_operations, apply_operations, apply_deferred).chain(),
+			)
+			.add_systems(PostUpdate, wait_for_reflect_components);
 	}
 }
 
 enum AsyncOperation {
 	Command(BoxedCommand),
 	System(SystemOperation),
-	Entity,
+	Entity(EntityOperation),
 	Event,
 	Resource,
 }
@@ -38,7 +38,7 @@ impl Command for AsyncOperation {
 		match self {
 			AsyncOperation::Command(command) => command.apply(world),
 			AsyncOperation::System(system_op) => system_op.apply(world),
-			// AsyncOperation::Entity => {}
+			AsyncOperation::Entity(entity_op) => entity_op.apply(world),
 			// AsyncOperation::Event => {}
 			// AsyncOperation::Resource => {}
 			_ => unimplemented!(),
@@ -110,7 +110,11 @@ impl From<Sender<AsyncOperation>> for OperationSender {
 }
 
 impl OperationSender {
-	async fn send(&self, operation: AsyncOperation) {
+	async fn send(&self, operation: impl Into<AsyncOperation>) {
+		self.send_inner(operation.into()).await;
+	}
+
+	async fn send_inner(&self, operation: AsyncOperation) {
 		self.0.send(operation).await.expect("invariant broken");
 	}
 }
@@ -127,6 +131,29 @@ impl AsyncWorld {
 	pub async fn register_system<M>(&self, system: impl IntoSystem<(), (), M>) -> AsyncSystem {
 		let system = Box::new(IntoSystem::into_system(system));
 		AsyncSystem::new(system, self.0.clone()).await
+	}
+
+	pub async fn register_io_system<I: Send + 'static, O: Send + 'static, M>(
+		&self,
+		system: impl IntoSystem<I, O, M>,
+	) -> AsyncIOSystem<I, O> {
+		AsyncIOSystem::new(system, self.0.clone()).await
+	}
+
+	pub fn entity(&self, id: Entity) -> AsyncEntity {
+		AsyncEntity::new(id, self.0.clone())
+	}
+
+	pub async fn spawn_empty(&self) -> AsyncEntity {
+		AsyncEntity::new_empty(self.0.clone()).await
+	}
+
+	pub async fn spawn_named(&self, name: impl Into<Cow<'static, str>>) -> AsyncEntity {
+		AsyncEntity::new_named(name.into(), self.0.clone()).await
+	}
+
+	pub async fn spawn<B: Bundle + Reflect>(&self, bundle: B) -> AsyncEntity {
+		AsyncEntity::new_bundle(Box::new(bundle), self.0.clone()).await
 	}
 }
 

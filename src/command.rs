@@ -1,5 +1,5 @@
-use bevy::ecs::prelude::World;
 use bevy::ecs::system::{Command, CommandQueue};
+use bevy::prelude::*;
 
 pub struct BoxedCommand(CommandQueue);
 
