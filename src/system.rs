@@ -13,12 +13,6 @@ pub(super) enum SystemOperation {
 	Run(SystemId),
 }
 
-impl From<SystemOperation> for AsyncOperation {
-	fn from(system_op: SystemOperation) -> Self {
-		Self::System(system_op)
-	}
-}
-
 impl Command for SystemOperation {
 	fn apply(self, world: &mut World) {
 		match self {
@@ -40,6 +34,12 @@ impl Command for SystemOperation {
 				world.run_system(id).expect("invariant broken");
 			}
 		}
+	}
+}
+
+impl From<SystemOperation> for AsyncOperation {
+	fn from(system_op: SystemOperation) -> Self {
+		Self::System(system_op)
 	}
 }
 
@@ -143,7 +143,8 @@ struct AsyncIOBeacon;
 
 #[cfg(test)]
 mod tests {
-	use crate::{AsyncEcsPlugin, AsyncWorld};
+	use crate::world::AsyncWorld;
+	use crate::AsyncEcsPlugin;
 	use bevy::prelude::*;
 	use futures_lite::future;
 
@@ -167,8 +168,6 @@ mod tests {
 			counter.go_up();
 		}
 	}
-
-	// Vanilla bevy systems
 
 	fn increase_counter(In(id): In<Entity>, mut query: Query<&mut Counter>) {
 		let mut counter = query.get_mut(id).unwrap();

@@ -17,12 +17,6 @@ pub enum EntityOperation {
 	Reflect(ReflectOperation),
 }
 
-impl From<EntityOperation> for AsyncOperation {
-	fn from(entity_op: EntityOperation) -> Self {
-		Self::Entity(entity_op)
-	}
-}
-
 impl Command for EntityOperation {
 	fn apply(self, world: &mut World) {
 		match self {
@@ -43,6 +37,12 @@ impl Command for EntityOperation {
 pub struct AsyncEntity {
 	id: Entity,
 	sender: OperationSender,
+}
+
+impl From<EntityOperation> for AsyncOperation {
+	fn from(entity_op: EntityOperation) -> Self {
+		Self::Entity(entity_op)
+	}
 }
 
 impl AsyncEntity {
@@ -131,9 +131,10 @@ impl<C: Component + FromReflect> AsyncComponent<C> {
 
 #[cfg(test)]
 mod tests {
-	use crate::{AsyncEcsPlugin, AsyncWorld};
+	use crate::AsyncEcsPlugin;
 	use bevy::prelude::*;
 	use futures_lite::future;
+	use crate::world::AsyncWorld;
 
 	#[test]
 	fn smoke() {

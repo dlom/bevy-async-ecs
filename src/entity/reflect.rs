@@ -16,12 +16,6 @@ pub enum ReflectOperation {
 	WaitForComponent(Entity, TypeId, Sender<Box<dyn Reflect>>),
 }
 
-impl From<ReflectOperation> for AsyncOperation {
-	fn from(reflect_op: ReflectOperation) -> Self {
-		EntityOperation::Reflect(reflect_op).into()
-	}
-}
-
 impl Command for ReflectOperation {
 	fn apply(self, world: &mut World) {
 		world.resource_scope(|world, registry: Mut<AppTypeRegistry>| {
@@ -68,6 +62,12 @@ impl Command for ReflectOperation {
 	}
 }
 
+impl From<ReflectOperation> for AsyncOperation {
+	fn from(reflect_op: ReflectOperation) -> Self {
+		EntityOperation::Reflect(reflect_op).into()
+	}
+}
+
 #[derive(Component)]
 pub struct WaitingFor(TypeId, Sender<Box<dyn Reflect>>);
 
@@ -105,7 +105,8 @@ fn get_reflect_bundle(registry: &TypeRegistry, type_id: TypeId) -> &ReflectBundl
 
 #[cfg(test)]
 mod tests {
-	use crate::{AsyncEcsPlugin, AsyncWorld};
+	use crate::world::AsyncWorld;
+	use crate::AsyncEcsPlugin;
 	use bevy::ecs::reflect::ReflectBundle;
 	use bevy::prelude::*;
 	use futures_lite::future;
