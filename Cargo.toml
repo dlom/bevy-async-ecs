@@ -15,4 +15,5 @@ bevy = { version = "0.12", git = "https://github.com/bevyengine/bevy", rev="951c
 async-channel = "1"
 
 [dev-dependencies]
+bevy = { version = "0.12", git = "https://github.com/bevyengine/bevy", rev="951c9bb1a25caddc97ac69bbe8a2937f97227e90" }
 futures-lite = "1"

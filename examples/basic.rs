@@ -1,7 +1,6 @@
-use bevy::log::LogPlugin;
 use bevy::prelude::*;
+use bevy::tasks::AsyncComputeTaskPool;
 use bevy_async_ecs::*;
-use futures_lite::future;
 
 // vanilla Bevy system
 fn print_names(query: Query<(Entity, &Name)>) {
@@ -12,7 +11,7 @@ fn print_names(query: Query<(Entity, &Name)>) {
 
 fn main() {
 	App::new()
-		.add_plugins((MinimalPlugins, AsyncEcsPlugin, LogPlugin::default()))
+		.add_plugins((DefaultPlugins, AsyncEcsPlugin))
 		.add_systems(Startup, |world: &mut World| {
 			let async_world = AsyncWorld::from_world(world);
 			let fut = async move {
@@ -22,11 +21,7 @@ fn main() {
 				print_names.run().await;
 				entity.despawn().await;
 			};
-
-			// In an non-example, you would use `AsyncComputeTaskPool::get().spawn(fut).detach()` instead
-			std::thread::spawn(move || {
-				future::block_on(fut);
-			});
+			AsyncComputeTaskPool::get().spawn(fut).detach();
 		})
 		.run();
 }

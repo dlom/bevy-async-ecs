@@ -139,6 +139,19 @@ impl AsyncEntity {
 	pub async fn wait_for<C: Component + FromReflect>(&self) -> C {
 		self.start_waiting_for().await.wait().await
 	}
+
+	/// Insert the given `Component` of type `I` onto the entity, then immediately wait for a
+	/// component of type `WR` to be added to the entity. After one is received, this will then
+	/// remove the component of type `WR`.
+	pub async fn insert_wait_remove<I: Component + Reflect, WR: Component + FromReflect>(
+		&self,
+		component: I,
+	) -> WR {
+		self.insert_component(component).await;
+		let wr = self.wait_for::<WR>().await;
+		self.remove_component::<WR>().await;
+		wr
+	}
 }
 
 #[cfg(test)]
