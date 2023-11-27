@@ -9,15 +9,15 @@ use bevy::prelude::*;
 use std::any::TypeId;
 use std::borrow::Cow;
 
-/// Exposes asynchronous access to the ECS world.
+/// Exposes asynchronous access to the Bevy ECS `World`.
 ///
 /// # Commands
-/// Apply any command asynchronously with `AsyncWorld::apply_command`.
+/// Apply any `Command` asynchronously with `AsyncWorld::apply_command`.
 ///
 /// # Systems
-/// Just like their synchronous variants, asynchronous systems must be registered
+/// Just like their synchronous variants, asynchronous `System`s must be registered
 /// before they can be used. Systems can optionally accept and return values asynchronously
-/// if they are registered with the `AsyncWorld::register_io_system` function.
+/// if they are registered with `AsyncWorld::register_io_system`.
 ///
 /// # Entities
 /// Spawn entities with the `AsyncWorld::spawn_*` family.

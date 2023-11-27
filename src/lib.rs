@@ -92,7 +92,7 @@ pub mod operations {
 
 type CowStr = Cow<'static, str>;
 
-/// Adds asynchronous ECS operations to Apps.
+/// Adds asynchronous ECS operations to Bevy `App`s.
 pub struct AsyncEcsPlugin;
 
 impl Plugin for AsyncEcsPlugin {

@@ -6,7 +6,7 @@ use bevy::reflect::TypeRegistry;
 use std::any::TypeId;
 use std::marker::PhantomData;
 
-/// A resource-related operation that can be applied to an `AsyncWorld`.
+/// A `Resource`-related operation that can be applied to an `AsyncWorld`.
 #[non_exhaustive]
 pub enum ResourceOperation {
 	/// Insert the given boxed `Resource` into the `AsyncWorld`.
