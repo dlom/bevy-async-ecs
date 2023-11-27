@@ -7,19 +7,88 @@ mod resource;
 mod system;
 mod world;
 
-use crate::command::BoxedCommand;
-use crate::entity::{wait_for_reflect_components, EntityOperation};
-use crate::resource::{wait_for_reflect_resources, ResourceOperation};
-use crate::system::SystemOperation;
+use crate::entity::wait_for_reflect_components;
+use crate::resource::wait_for_reflect_resources;
 use async_channel::{Receiver, Sender, TryRecvError};
 use bevy::ecs::system::Command;
 use bevy::prelude::*;
 use std::borrow::Cow;
 
+use crate::operations::AsyncOperation;
 pub use entity::{AsyncComponent, AsyncEntity};
 pub use resource::AsyncResource;
 pub use system::{AsyncIOSystem, AsyncSystem};
 pub use world::AsyncWorld;
+
+/// Types for interacting with the `AsyncWorld` directly, rather than through the convenience commands.
+pub mod operations {
+	use bevy::ecs::system::Command;
+	use bevy::prelude::*;
+
+	pub use super::command::BoxedCommand;
+	pub use super::entity::reflect::ReflectOperation;
+	pub use super::entity::EntityOperation;
+	pub use super::resource::ResourceOperation;
+	pub use super::system::{AsyncIOBeacon, SystemOperation};
+
+	/// An operation that can be applied to an `AsyncWorld`.
+	#[non_exhaustive]
+	pub enum AsyncOperation {
+		/// A vanilla Bevy `Command` (wrapped in a `CommandBox`).
+		Command(BoxedCommand),
+		/// `System` operations.
+		System(SystemOperation),
+		/// `Entity` operations.
+		Entity(EntityOperation),
+		/// `Resource` operations.
+		Resource(ResourceOperation),
+		/// A FIFO queue of `AsyncOperation`s.
+		Queue(OperationQueue),
+	}
+
+	impl Command for AsyncOperation {
+		fn apply(self, world: &mut World) {
+			match self {
+				AsyncOperation::Command(command) => command.apply(world),
+				AsyncOperation::System(system_op) => system_op.apply(world),
+				AsyncOperation::Entity(entity_op) => entity_op.apply(world),
+				AsyncOperation::Resource(resource_op) => resource_op.apply(world),
+				AsyncOperation::Queue(queue) => queue.apply(world),
+			}
+		}
+	}
+
+	/// A queue of `AsyncOperation`s that will be applied to the `AsyncWorld` atomically in FIFO order.
+	#[derive(Default)]
+	pub struct OperationQueue(Vec<AsyncOperation>);
+
+	impl OperationQueue {
+		/// Constructs a new, empty `OperationQueue`.
+		pub fn new() -> Self {
+			Self(Vec::with_capacity(4))
+		}
+
+		/// Appends an operation to the queue.
+		pub fn push(&mut self, operation: impl Into<AsyncOperation>) {
+			let operation = operation.into();
+			self.0.push(operation);
+		}
+	}
+
+	impl Command for OperationQueue {
+		fn apply(self, world: &mut World) {
+			for operation in self.0 {
+				operation.apply(world);
+			}
+		}
+	}
+
+	impl From<OperationQueue> for AsyncOperation {
+		fn from(queue: OperationQueue) -> Self {
+			Self::Queue(queue)
+		}
+	}
+}
 
 type CowStr = Cow<'static, str>;
 
@@ -37,24 +106,6 @@ impl Plugin for AsyncEcsPlugin {
 				PostUpdate,
 				(wait_for_reflect_components, wait_for_reflect_resources),
 			);
-	}
-}
-
-enum AsyncOperation {
-	Command(BoxedCommand),
-	System(SystemOperation),
-	Entity(EntityOperation),
-	Resource(ResourceOperation),
-}
-
-impl Command for AsyncOperation {
-	fn apply(self, world: &mut World) {
-		match self {
-			AsyncOperation::Command(command) => command.apply(world),
-			AsyncOperation::System(system_op) => system_op.apply(world),
-			AsyncOperation::Entity(entity_op) => entity_op.apply(world),
-			AsyncOperation::Resource(resource_op) => resource_op.apply(world),
-		}
 	}
 }
 

@@ -8,12 +8,22 @@ use bevy::reflect::TypeRegistry;
 use std::any::TypeId;
 use std::marker::PhantomData;
 
-pub(crate) enum ReflectOperation {
+/// A `Reflect`-related operation that can be applied to an `AsyncWorld`.
+#[non_exhaustive]
+pub enum ReflectOperation {
+	/// Insert a boxed `Component` into the given `Entity`.
 	InsertComponent(Entity, Box<dyn Reflect>),
+	/// Insert a boxed `Bundle` into the given `Entity`.
 	InsertBundle(Entity, Box<dyn Reflect>),
+	/// Remove a `Component` specified by `TypeId` from the given `Entity`.
 	RemoveComponent(Entity, TypeId),
+	/// Remove a `Bundle` specified by `TypeId` from the given `Entity`.
 	RemoveBundle(Entity, TypeId),
+	/// Spawn an entity with the given `Bundle`. The spawned entity's ID will be sent into the `Sender`.
 	SpawnWithBundle(Box<dyn Reflect>, Sender<Entity>),
+	/// Wait for the `Component` specified by the `TypeId` to exist on the given entity. As soon as
+	/// the component exists (or if it already exists), the value of the component will be sent into
+	/// the `Sender`.
 	WaitForComponent(Entity, TypeId, Sender<Box<dyn Reflect>>),
 }
 

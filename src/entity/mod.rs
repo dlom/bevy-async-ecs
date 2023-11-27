@@ -1,4 +1,4 @@
-mod reflect;
+pub(crate) mod reflect;
 
 use crate::{AsyncOperation, CowStr, OperationSender};
 use async_channel::Sender;
@@ -10,10 +10,16 @@ use std::any::TypeId;
 pub(crate) use reflect::wait_for_reflect_components;
 pub use reflect::AsyncComponent;
 
-pub(crate) enum EntityOperation {
+/// An `Entity`-related operation that can be applied to an `AsyncWorld`.
+#[non_exhaustive]
+pub enum EntityOperation {
+	/// Spawn an empty `Entity`. The spawned entity's ID will be sent into the `Sender`.
 	SpawnEmpty(Sender<Entity>),
+	/// Spawn an `Entity` with the given `Name`. The spawned entity's ID will be sent into the `Sender`.
 	SpawnNamed(CowStr, Sender<Entity>),
+	/// Despawn the given `Entity`.
 	Despawn(Entity),
+	/// Perform a `Reflect`-related operation.
 	Reflect(ReflectOperation),
 }
 

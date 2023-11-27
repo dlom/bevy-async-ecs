@@ -1,3 +1,4 @@
+use crate::operations::OperationQueue;
 use crate::{AsyncOperation, OperationSender};
 use async_channel::{Receiver, Sender};
 use bevy::ecs::system::{BoxedSystem, Command, SystemId};
@@ -5,11 +6,22 @@ use bevy::prelude::*;
 use std::any::Any;
 use std::marker::PhantomData;
 
-pub(crate) enum SystemOperation {
+type AnyReceiver = Receiver<Box<dyn Any + Send>>;
+type AnySender = Sender<Box<dyn Any + Send>>;
+
+/// A `System`-related operation that can be applied to an `AsyncWorld`.
+
+#[non_exhaustive]
+pub enum SystemOperation {
+	/// Register the `System` with the `AsyncWorld`. The registered system's ID will be sent into the `Sender`.
 	Register(BoxedSystem, Sender<SystemId>),
-	RegisterIO(AsyncIO, Sender<Entity>),
+	/// Spawn an entity with the IO channels attached. The spawned entity's ID will be sent into the `Sender`.
+	RegisterIO(AnyReceiver, AnySender, Sender<Entity>),
+	/// Add the `AsyncIOBeacon` `Component` to the given `Entity`.
 	MarkBeacon(Entity),
+	/// Remove the `AsyncIOBeacon` `Component` from the given `Entity`.
 	UnmarkBeacon(Entity),
+	/// Run the system specified by the `SystemId` on the given `AsyncWorld`.
 	Run(SystemId),
 }
 
@@ -20,8 +32,8 @@ impl Command for SystemOperation {
 				let id = world.register_boxed_system(system);
 				sender.try_send(id).expect("invariant broken");
 			}
-			SystemOperation::RegisterIO(async_io, sender) => {
-				let id = world.spawn(async_io).id();
+			SystemOperation::RegisterIO(io_receiver, io_sender, sender) => {
+				let id = world.spawn(AsyncIO(io_receiver, io_sender)).id();
 				sender.try_send(id).expect("invariant broken");
 			}
 			SystemOperation::MarkBeacon(id) => {
@@ -70,8 +82,8 @@ impl AsyncSystem {
 /// asynchronously.
 pub struct AsyncIOSystem<I: Send, O: Send> {
 	beacon_location: Entity,
-	sender: Sender<Box<dyn Any + Send>>,
-	receiver: Receiver<Box<dyn Any + Send>>,
+	sender: AnySender,
+	receiver: AnyReceiver,
 	inner: AsyncSystem,
 	_pd: PhantomData<fn(I) -> O>,
 }
@@ -80,10 +92,9 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 	pub(crate) async fn new<M>(system: impl IntoSystem<I, O, M>, sender: OperationSender) -> Self {
 		let (in_tx, in_rx) = async_channel::unbounded();
 		let (out_tx, out_rx) = async_channel::unbounded();
-		let async_io = AsyncIO(in_rx, out_tx);
-
 		let (beacon_tx, beacon_rx) = async_channel::bounded(1);
-		let operation = SystemOperation::RegisterIO(async_io, beacon_tx);
+
+		let operation = SystemOperation::RegisterIO(in_rx, out_tx, beacon_tx);
 		sender.send(operation).await;
 		let beacon_location = beacon_rx.recv().await.expect("invariant broken");
 
@@ -123,15 +134,14 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 		let i = Box::new(i);
 		self.sender.send(i).await.expect("invariant broken");
 
-		self.inner
-			.sender
-			.send(SystemOperation::MarkBeacon(self.beacon_location))
-			.await;
-		self.inner.run().await;
-		self.inner
-			.sender
-			.send(SystemOperation::UnmarkBeacon(self.beacon_location))
-			.await;
+		let operation = {
+			let mut queue = OperationQueue::default();
+			queue.push(SystemOperation::MarkBeacon(self.beacon_location));
+			queue.push(SystemOperation::Run(self.inner.id));
+			queue.push(SystemOperation::UnmarkBeacon(self.beacon_location));
+			queue
+		};
+		self.inner.sender.send(operation).await;
 
 		let boxed = self.receiver.recv().await.expect("invariant broken");
 		let concrete = boxed.downcast().expect("invariant broken");
@@ -140,11 +150,12 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 }
 
 #[derive(Component)]
-pub(crate) struct AsyncIO(Receiver<Box<dyn Any + Send>>, Sender<Box<dyn Any + Send>>);
+struct AsyncIO(AnyReceiver, AnySender);
 
+/// The marker `Component` that is manipulated by `SystemOperation::MarkBeacon` and `SystemOperation::UnmarkBeacon`.
 #[derive(Component)]
 #[component(storage = "SparseSet")]
-struct AsyncIOBeacon;
+pub struct AsyncIOBeacon;
 
 #[cfg(test)]
 mod tests {

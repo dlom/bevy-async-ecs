@@ -6,9 +6,16 @@ use bevy::reflect::TypeRegistry;
 use std::any::TypeId;
 use std::marker::PhantomData;
 
-pub(crate) enum ResourceOperation {
+/// A resource-related operation that can be applied to an `AsyncWorld`.
+#[non_exhaustive]
+pub enum ResourceOperation {
+	/// Insert the given boxed `Resource` into the `AsyncWorld`.
 	Insert(Box<dyn Reflect>),
+	/// Remove the `Resource` specified by `TypeId` from the `AsyncWorld`.
 	Remove(TypeId),
+	/// Wait for the `Resource` specified by the `TypeId` to exist in the `AsyncWorld`. As soon as
+	/// the resource exists (or if it already exists), the value of the resource will be sent into
+	/// the `Sender`.
 	WaitFor(TypeId, Sender<Box<dyn Reflect>>),
 }
 

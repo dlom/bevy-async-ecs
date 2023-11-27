@@ -1,4 +1,5 @@
 use crate::command::BoxedCommand;
+use crate::operations::AsyncOperation;
 use crate::resource::ResourceOperation;
 use crate::{
 	AsyncEntity, AsyncIOSystem, AsyncResource, AsyncSystem, OperationReceiver, OperationSender,
@@ -30,6 +31,11 @@ impl AsyncWorld {
 	/// Applies the given `Command` to the world.
 	pub async fn apply_command<C: Command>(&self, command: C) {
 		self.0.send(BoxedCommand::new(command)).await;
+	}
+
+	/// Applies the given `Operation` to the world.
+	pub async fn apply_operation(&self, operation: AsyncOperation) {
+		self.0.send(operation).await;
 	}
 
 	/// Registers a `System` and returns an `AsyncSystem` that can be used to run the system on demand.
@@ -108,7 +114,7 @@ impl AsyncWorld {
 impl FromWorld for AsyncWorld {
 	fn from_world(world: &mut World) -> Self {
 		let (sender, receiver) = async_channel::unbounded();
-		world.spawn((OperationReceiver(receiver), Name::new("AsyncReceiver")));
+		world.spawn((OperationReceiver(receiver), Name::new("OperationReceiver")));
 		Self(OperationSender(sender))
 	}
 }

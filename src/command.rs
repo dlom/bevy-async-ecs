@@ -2,9 +2,11 @@ use crate::AsyncOperation;
 use bevy::ecs::system::{Command, CommandQueue};
 use bevy::prelude::*;
 
-pub(crate) struct BoxedCommand(CommandQueue);
+/// The object-safe equivalent of a `Box<dyn Command>`.
+pub struct BoxedCommand(CommandQueue);
 
 impl BoxedCommand {
+	/// Constructs a new `CommandBox` from the given Bevy command.
 	pub fn new<C: Command>(inner: C) -> Self {
 		Self({
 			let mut queue = CommandQueue::default();
