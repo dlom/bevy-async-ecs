@@ -12,10 +12,11 @@ It can only be created using the `FromWorld` trait implementation.
 It should be driven by an executor running parallel with the main Bevy app
 (this can either be one of the `TaskPool`s or a blocking executor running on another thread).
 
-Internally, the `AsyncWorld` simply wraps a channel sender that can be cheaply cloned and further sent to separate threads or tasks.
+Internally, the `AsyncWorld` simply wraps an MPSC channel sender.
+As such, it can be cheaply cloned and further sent to separate threads or tasks.
 This means that all operations on the `AsyncWorld` are processed in FIFO order.
-However, there are no ordering guarantees between `AsyncWorld`s or any derivatives sharing the same
-internal channel sender.
+However, there are no ordering guarantees between `AsyncWorld`s or any derivatives sharing the same internal channel sender.
+If ordering guarantees are required, you can use the operations API described below (`AsyncOperation::Queue`).
 
 ## Basic example
 
@@ -48,3 +49,8 @@ fn main() {
         .run();
 }
 ```
+
+## Operations
+
+The internal API used to implement the `AsyncWorld` is exposed and documented through the `operations` module. 
+`AsyncOperation`s can be applied directly to an `AsyncWorld`. 
