@@ -16,7 +16,7 @@ pub enum SystemOperation {
 	/// Register the `System` with the `AsyncWorld`. The registered system's ID will be sent into the `Sender`.
 	Register(BoxedSystem, Sender<SystemId>),
 	/// Spawn an entity with the IO channels attached. The spawned entity's ID will be sent into the `Sender`.
-	RegisterIO(AnyReceiver, AnySender, Sender<Entity>),
+	RegisterIO(AsyncIO, Sender<Entity>),
 	/// Add the `AsyncIOBeacon` `Component` to the given `Entity`.
 	MarkBeacon(Entity),
 	/// Remove the `AsyncIOBeacon` `Component` from the given `Entity`.
@@ -32,8 +32,8 @@ impl Command for SystemOperation {
 				let id = world.register_boxed_system(system);
 				sender.try_send(id).expect("invariant broken");
 			}
-			SystemOperation::RegisterIO(io_receiver, io_sender, sender) => {
-				let id = world.spawn(AsyncIO(io_receiver, io_sender)).id();
+			SystemOperation::RegisterIO(async_io, sender) => {
+				let id = world.spawn(async_io).id();
 				sender.try_send(id).expect("invariant broken");
 			}
 			SystemOperation::MarkBeacon(id) => {
@@ -54,6 +54,39 @@ impl From<SystemOperation> for AsyncOperation {
 		Self::System(system_op)
 	}
 }
+
+/// A `Component` for vanilla Bevy that facilitates receiving and sending values to an async context.
+#[derive(Component)]
+#[component(storage = "SparseSet")]
+pub struct AsyncIO {
+	input_rx: AnyReceiver,
+	output_tx: AnySender,
+}
+
+impl AsyncIO {
+	/// Construct a new `AsyncIO` from an input `Receiver` and an output `Sender`.
+	pub fn new(input_rx: AnyReceiver, output_tx: AnySender) -> Self {
+		Self {
+			input_rx,
+			output_tx,
+		}
+	}
+
+	/// Synchronously receive input from the async context.
+	pub fn receive_input(&self) -> Box<dyn Any + Send> {
+		self.input_rx.try_recv().expect("invariant broken")
+	}
+
+	/// Synchronously send output back to the async context.
+	pub fn send_output(&self, value: Box<dyn Any + Send>) {
+		self.output_tx.try_send(value).expect("invariant broken")
+	}
+}
+
+/// The marker `Component` that is manipulated by `SystemOperation::MarkBeacon` and `SystemOperation::UnmarkBeacon`.
+#[derive(Component)]
+#[component(storage = "SparseSet")]
+pub struct AsyncIOBeacon;
 
 /// Represents a registered `System` that can be run asynchronously.
 pub struct AsyncSystem {
@@ -82,27 +115,26 @@ impl AsyncSystem {
 /// asynchronously.
 pub struct AsyncIOSystem<I: Send, O: Send> {
 	beacon_location: Entity,
-	sender: AnySender,
-	receiver: AnyReceiver,
+	input_tx: AnySender,
+	output_rx: AnyReceiver,
 	inner: AsyncSystem,
 	_pd: PhantomData<fn(I) -> O>,
 }
 
 impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 	pub(crate) async fn new<M>(system: impl IntoSystem<I, O, M>, sender: OperationSender) -> Self {
-		let (in_tx, in_rx) = async_channel::unbounded();
-		let (out_tx, out_rx) = async_channel::unbounded();
+		let (input_tx, input_rx) = async_channel::unbounded();
+		let (output_tx, output_rx) = async_channel::unbounded();
 		let (beacon_tx, beacon_rx) = async_channel::bounded(1);
 
-		let operation = SystemOperation::RegisterIO(in_rx, out_tx, beacon_tx);
+		let async_io = AsyncIO::new(input_rx, output_tx);
+		let operation = SystemOperation::RegisterIO(async_io, beacon_tx);
 		sender.send(operation).await;
 		let beacon_location = beacon_rx.recv().await.expect("invariant broken");
 
 		fn receive_input<I: Send + 'static>(query: Query<&AsyncIO, With<AsyncIOBeacon>>) -> I {
-			let AsyncIO(receiver, _) = query.get_single().expect("invariant broken");
-			let receiver = receiver.clone();
-
-			let boxed = receiver.try_recv().expect("invariant broken");
+			let async_io = query.get_single().expect("invariant broken");
+			let boxed = async_io.receive_input();
 			let concrete = boxed.downcast().expect("invariant broken");
 			*concrete
 		}
@@ -111,10 +143,8 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 			In(output): In<O>,
 			query: Query<&AsyncIO, With<AsyncIOBeacon>>,
 		) {
-			let AsyncIO(_, sender) = query.get_single().expect("invariant broken");
-			let sender = sender.clone();
-
-			sender.try_send(Box::new(output)).expect("invariant broken");
+			let async_io = query.get_single().expect("invariant broken");
+			async_io.send_output(Box::new(output));
 		}
 
 		let system = Box::new(receive_input.pipe(system).pipe(send_output));
@@ -122,8 +152,8 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 
 		Self {
 			beacon_location,
-			sender: in_tx,
-			receiver: out_rx,
+			input_tx,
+			output_rx,
 			inner,
 			_pd: PhantomData,
 		}
@@ -132,7 +162,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 	/// Run the system.
 	pub async fn run(&self, i: I) -> O {
 		let i = Box::new(i);
-		self.sender.send(i).await.expect("invariant broken");
+		self.input_tx.send(i).await.expect("invariant broken");
 
 		let operation = {
 			let mut queue = OperationQueue::default();
@@ -143,19 +173,11 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 		};
 		self.inner.sender.send(operation).await;
 
-		let boxed = self.receiver.recv().await.expect("invariant broken");
+		let boxed = self.output_rx.recv().await.expect("invariant broken");
 		let concrete = boxed.downcast().expect("invariant broken");
 		*concrete
 	}
 }
-
-#[derive(Component)]
-struct AsyncIO(AnyReceiver, AnySender);
-
-/// The marker `Component` that is manipulated by `SystemOperation::MarkBeacon` and `SystemOperation::UnmarkBeacon`.
-#[derive(Component)]
-#[component(storage = "SparseSet")]
-pub struct AsyncIOBeacon;
 
 #[cfg(test)]
 mod tests {

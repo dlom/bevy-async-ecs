@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
@@ -29,7 +30,7 @@ pub mod operations {
 	pub use super::entity::reflect::ReflectOperation;
 	pub use super::entity::EntityOperation;
 	pub use super::resource::ResourceOperation;
-	pub use super::system::{AsyncIOBeacon, SystemOperation};
+	pub use super::system::{AsyncIO, AsyncIOBeacon, SystemOperation};
 
 	/// An operation that can be applied to an `AsyncWorld`.
 	#[non_exhaustive]
