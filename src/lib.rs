@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
@@ -8,14 +9,14 @@ mod resource;
 mod system;
 mod world;
 
-use crate::entity::wait_for_reflect_components;
-use crate::resource::wait_for_reflect_resources;
 use async_channel::{Receiver, Sender, TryRecvError};
 use bevy::ecs::system::Command;
 use bevy::prelude::*;
+use entity::wait_for_reflect_components;
+use operations::AsyncOperation;
+use resource::wait_for_reflect_resources;
 use std::borrow::Cow;
 
-use crate::operations::AsyncOperation;
 pub use entity::{AsyncComponent, AsyncEntity};
 pub use resource::AsyncResource;
 pub use system::{AsyncIOSystem, AsyncSystem};
@@ -30,9 +31,10 @@ pub mod operations {
 	pub use super::entity::reflect::ReflectOperation;
 	pub use super::entity::EntityOperation;
 	pub use super::resource::ResourceOperation;
-	pub use super::system::{AsyncIO, AsyncIOBeacon, SystemOperation};
+	pub use super::system::SystemOperation;
 
 	/// An operation that can be applied to an `AsyncWorld`.
+	#[derive(Debug)]
 	#[non_exhaustive]
 	pub enum AsyncOperation {
 		/// A vanilla Bevy `Command` (wrapped in a `CommandBox`).
@@ -60,8 +62,14 @@ pub mod operations {
 	}
 
 	/// A queue of `AsyncOperation`s that will be applied to the `AsyncWorld` atomically in FIFO order.
-	#[derive(Default)]
+	#[derive(Debug)]
 	pub struct OperationQueue(Vec<AsyncOperation>);
+
+	impl Default for OperationQueue {
+		fn default() -> Self {
+			Self::new()
+		}
+	}
 
 	impl OperationQueue {
 		/// Constructs a new, empty `OperationQueue`.
@@ -84,9 +92,35 @@ pub mod operations {
 		}
 	}
 
+	impl FromIterator<AsyncOperation> for OperationQueue {
+		fn from_iter<I: IntoIterator<Item = AsyncOperation>>(iter: I) -> Self {
+			Self(iter.into_iter().collect())
+		}
+	}
+
 	impl From<OperationQueue> for AsyncOperation {
 		fn from(queue: OperationQueue) -> Self {
 			Self::Queue(queue)
+		}
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use super::*;
+
+		#[test]
+		fn coverage() {
+			let id = Entity::PLACEHOLDER;
+
+			let queue1 = {
+				let mut queue = OperationQueue::default();
+				queue.push(EntityOperation::Despawn(id));
+				queue
+			};
+
+			let queue2 = OperationQueue::from_iter([EntityOperation::Despawn(id).into()]);
+
+			assert_eq!(queue1.0.len(), queue2.0.len());
 		}
 	}
 }
@@ -94,11 +128,12 @@ pub mod operations {
 type CowStr = Cow<'static, str>;
 
 /// Adds asynchronous ECS operations to Bevy `App`s.
+#[derive(Debug)]
 pub struct AsyncEcsPlugin;
 
 impl Plugin for AsyncEcsPlugin {
 	fn build(&self, app: &mut App) {
-		app.init_resource::<OperationQueue>()
+		app.init_resource::<WorldOperationQueue>()
 			.add_systems(
 				Last,
 				(receive_operations, apply_operations, apply_deferred).chain(),
@@ -110,7 +145,7 @@ impl Plugin for AsyncEcsPlugin {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct OperationSender(Sender<AsyncOperation>);
 
 impl OperationSender {
@@ -128,7 +163,7 @@ impl OperationSender {
 struct OperationReceiver(Receiver<AsyncOperation>);
 
 impl OperationReceiver {
-	fn enqueue_into(&self, queue: &mut OperationQueue) -> Result<(), ()> {
+	fn enqueue_into(&self, queue: &mut WorldOperationQueue) -> Result<(), ()> {
 		loop {
 			match self.0.try_recv() {
 				Ok(system) => queue.0.push(system),
@@ -143,26 +178,19 @@ impl OperationReceiver {
 }
 
 #[derive(Resource)]
-struct OperationQueue(Vec<AsyncOperation>);
+struct WorldOperationQueue(Vec<AsyncOperation>);
 
-const DEFAULT_QUEUE_SIZE: usize = 16;
-
-impl Default for OperationQueue {
+impl Default for WorldOperationQueue {
 	fn default() -> Self {
-		Self(Vec::with_capacity(DEFAULT_QUEUE_SIZE))
+		Self(Vec::with_capacity(16))
 	}
 }
 
 fn receive_operations(
 	mut commands: Commands,
 	receivers: Query<(Entity, &OperationReceiver)>,
-	mut queue: ResMut<OperationQueue>,
+	mut queue: ResMut<WorldOperationQueue>,
 ) {
-	debug_assert_eq!(0, queue.0.len());
-	debug_assert!(queue.0.capacity() >= DEFAULT_QUEUE_SIZE);
-
-	queue.0.clear();
-
 	for (id, receiver) in receivers.iter() {
 		if receiver.enqueue_into(&mut queue).is_err() {
 			commands.entity(id).despawn()
@@ -171,9 +199,61 @@ fn receive_operations(
 }
 
 fn apply_operations(world: &mut World) {
-	world.resource_scope::<OperationQueue, _>(|world, mut queue| {
+	world.resource_scope::<WorldOperationQueue, _>(|world, mut queue| {
 		for operation in queue.0.drain(..) {
 			operation.apply(world);
 		}
 	})
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::operations::{OperationQueue, ReflectOperation};
+	use crate::{AsyncEcsPlugin, AsyncWorld};
+	use bevy::prelude::*;
+	use futures_lite::future;
+	use std::any::TypeId;
+
+	#[derive(Default, Component, Reflect)]
+	#[reflect(Component)]
+	struct Counter(u8);
+
+	#[test]
+	fn queue() {
+		let mut app = App::new();
+		app.register_type::<Counter>();
+		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
+
+		let (value_tx, value_rx) = async_channel::bounded(1);
+		let async_world = AsyncWorld::from_world(&mut app.world);
+		let id = app.world.spawn_empty().id();
+
+		let type_id = TypeId::of::<Counter>();
+
+		std::thread::spawn(move || {
+			future::block_on(async move {
+				let counter = Box::new(Counter(3));
+
+				let operation = OperationQueue::from_iter([
+					ReflectOperation::InsertComponent(id, counter).into(),
+					ReflectOperation::WaitForComponent(id, type_id, value_tx).into(),
+					ReflectOperation::RemoveComponent(id, type_id).into(),
+				]);
+
+				async_world.apply_operation(operation.into()).await;
+			});
+		});
+
+		let value = loop {
+			match value_rx.try_recv() {
+				Ok(value) => break value,
+				Err(_) => app.update(),
+			}
+		};
+		app.update();
+
+		let counter = Counter::take_from_reflect(value).unwrap();
+		assert_eq!(3, counter.0);
+		assert!(app.world.entity(id).get::<Counter>().is_none());
+	}
 }

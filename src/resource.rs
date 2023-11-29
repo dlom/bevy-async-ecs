@@ -7,6 +7,7 @@ use std::any::TypeId;
 use std::marker::PhantomData;
 
 /// A `Resource`-related operation that can be applied to an `AsyncWorld`.
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum ResourceOperation {
 	/// Insert the given boxed `Resource` into the `AsyncWorld`.
@@ -25,7 +26,7 @@ impl Command for ResourceOperation {
 			let registry = registry.read();
 			match self {
 				ResourceOperation::Insert(boxed) => {
-					let reflect_resource = get_reflect_resource(&registry, (*boxed).type_id());
+					let reflect_resource = get_reflect_resource(&registry, boxed.type_id());
 					reflect_resource.apply_or_insert(world, boxed.as_reflect());
 				}
 				ResourceOperation::Remove(type_id) => {
@@ -82,6 +83,7 @@ pub(crate) fn wait_for_reflect_resources(
 }
 
 /// Represents a `Resource` being retrieved.
+#[derive(Debug)]
 pub struct AsyncResource<R>(Receiver<Box<dyn Reflect>>, PhantomData<R>);
 
 impl<R: Resource + FromReflect> AsyncResource<R> {
@@ -98,8 +100,7 @@ impl<R: Resource + FromReflect> AsyncResource<R> {
 
 #[cfg(test)]
 mod tests {
-	use crate::world::AsyncWorld;
-	use crate::AsyncEcsPlugin;
+	use crate::{AsyncEcsPlugin, AsyncWorld};
 	use bevy::prelude::*;
 	use futures_lite::future;
 

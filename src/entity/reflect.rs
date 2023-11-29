@@ -9,6 +9,7 @@ use std::any::TypeId;
 use std::marker::PhantomData;
 
 /// A `Reflect`-related operation that can be applied to an `AsyncWorld`.
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum ReflectOperation {
 	/// Insert a boxed `Component` into the given `Entity`.
@@ -80,6 +81,7 @@ impl From<ReflectOperation> for AsyncOperation {
 }
 
 /// Represents a `Component` being retrieved.
+#[derive(Debug)]
 pub struct AsyncComponent<T: Component + FromReflect>(Receiver<Box<dyn Reflect>>, PhantomData<T>);
 
 impl<C: Component + FromReflect> AsyncComponent<C> {
@@ -131,8 +133,7 @@ fn get_reflect_bundle(registry: &TypeRegistry, type_id: TypeId) -> &ReflectBundl
 
 #[cfg(test)]
 mod tests {
-	use crate::world::AsyncWorld;
-	use crate::AsyncEcsPlugin;
+	use crate::{AsyncEcsPlugin, AsyncWorld};
 	use bevy::ecs::reflect::ReflectBundle;
 	use bevy::prelude::*;
 	use futures_lite::future;
@@ -407,5 +408,38 @@ mod tests {
 
 		assert_eq!(1, translation.0);
 		assert_eq!(2, translation.1);
+	}
+
+	#[test]
+	fn insert_wait_remove() {
+		let mut app = App::new();
+		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
+
+		app.register_type::<Translation>()
+			.register_type::<Scale>()
+			.register_type::<Transform>();
+
+		let (value_tx, value_rx) = async_channel::bounded(1);
+		let async_world = AsyncWorld::from_world(&mut app.world);
+		let id = app.world.spawn_empty().id();
+
+		std::thread::spawn(move || {
+			future::block_on(async move {
+				let scale: Scale = async_world.entity(id).insert_wait_remove(Scale(6, 7)).await;
+				value_tx.send(scale).await.unwrap();
+			});
+		});
+
+		let value = loop {
+			match value_rx.try_recv() {
+				Ok(value) => break value,
+				Err(_) => app.update(),
+			}
+		};
+		app.update();
+
+		assert_eq!(6, value.0);
+		assert_eq!(7, value.1);
+		assert!(app.world.entity(id).get::<Scale>().is_none());
 	}
 }

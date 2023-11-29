@@ -1,6 +1,4 @@
-use crate::command::BoxedCommand;
-use crate::operations::AsyncOperation;
-use crate::resource::ResourceOperation;
+use crate::operations::{AsyncOperation, BoxedCommand, ResourceOperation};
 use crate::{
 	AsyncEntity, AsyncIOSystem, AsyncResource, AsyncSystem, OperationReceiver, OperationSender,
 };
@@ -24,7 +22,7 @@ use std::borrow::Cow;
 ///
 /// # Resources
 /// Insert, remove, and wait for resources to exist.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AsyncWorld(OperationSender);
 
 impl AsyncWorld {

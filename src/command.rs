@@ -1,9 +1,16 @@
 use crate::AsyncOperation;
 use bevy::ecs::system::{Command, CommandQueue};
 use bevy::prelude::*;
+use std::fmt;
 
 /// The object-safe equivalent of a `Box<dyn Command>`.
 pub struct BoxedCommand(CommandQueue);
+
+impl fmt::Debug for BoxedCommand {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("BoxedCommand").finish()
+	}
+}
 
 impl BoxedCommand {
 	/// Constructs a new `CommandBox` from the given Bevy command.
@@ -30,8 +37,7 @@ impl From<BoxedCommand> for AsyncOperation {
 
 #[cfg(test)]
 mod tests {
-	use crate::world::AsyncWorld;
-	use crate::AsyncEcsPlugin;
+	use crate::{AsyncEcsPlugin, AsyncWorld};
 	use bevy::prelude::*;
 	use futures_lite::future;
 
@@ -51,6 +57,7 @@ mod tests {
 			let id = world.spawn(Marker).id();
 			sender.send_blocking(id).unwrap();
 		});
+		let debugged = format!("{:?}", command);
 
 		std::thread::spawn(move || {
 			future::block_on(async move {
@@ -67,5 +74,6 @@ mod tests {
 		app.update();
 
 		assert!(app.world.entity(id).get::<Marker>().is_some());
+		assert_eq!("BoxedCommand", debugged);
 	}
 }

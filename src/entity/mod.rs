@@ -11,6 +11,7 @@ pub(crate) use reflect::wait_for_reflect_components;
 pub use reflect::AsyncComponent;
 
 /// An `Entity`-related operation that can be applied to an `AsyncWorld`.
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum EntityOperation {
 	/// Spawn an empty `Entity`. The spawned entity's ID will be sent into the `Sender`.
@@ -44,6 +45,7 @@ impl Command for EntityOperation {
 ///
 /// Dropping the `AsyncEntity` **WILL NOT** despawn the corresponding entity in the synchronous world.
 /// Use `AsyncEntity::despawn` to despawn an entity asynchronously.
+#[derive(Debug)]
 pub struct AsyncEntity {
 	id: Entity,
 	sender: OperationSender,
@@ -162,8 +164,7 @@ impl AsyncEntity {
 
 #[cfg(test)]
 mod tests {
-	use crate::world::AsyncWorld;
-	use crate::AsyncEcsPlugin;
+	use crate::{AsyncEcsPlugin, AsyncWorld};
 	use bevy::prelude::*;
 	use futures_lite::future;
 
