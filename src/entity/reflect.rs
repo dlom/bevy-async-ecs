@@ -82,6 +82,8 @@ impl From<ReflectOperation> for AsyncOperation {
 }
 
 /// Represents a `Component` being retrieved.
+///
+/// The easiest way to get an `AsyncComponent` is with `AsyncEntity::start_waiting_for()`.
 #[derive(Debug)]
 pub struct AsyncComponent<T: Component + FromReflect>(Receiver<Box<dyn Reflect>>, PhantomData<T>);
 

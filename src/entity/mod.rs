@@ -47,6 +47,8 @@ impl Command for EntityOperation {
 
 /// Represents an `Entity` that can be manipulated asynchronously.
 ///
+/// The easiest way to get an `AsyncEntity` is with `AsyncWorld::spawn_empty()`.
+///
 /// Dropping the `AsyncEntity` **WILL NOT** despawn the corresponding entity in the synchronous world.
 /// Use `AsyncEntity::despawn` to despawn an entity asynchronously.
 #[derive(Debug)]

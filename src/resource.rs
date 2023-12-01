@@ -84,6 +84,8 @@ pub(crate) fn wait_for_reflect_resources(
 }
 
 /// Represents a `Resource` being retrieved.
+///
+/// The easiest way to get an `AsyncResource` is with `AsyncWorld::start_waiting_for_resource()`.
 #[derive(Debug)]
 pub struct AsyncResource<R>(Receiver<Box<dyn Reflect>>, PhantomData<R>);
 

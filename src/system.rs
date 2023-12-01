@@ -20,10 +20,13 @@ pub enum SystemOperation {
 	/// Register the `System` with the `AsyncWorld`. The registered system's ID will be sent into the `Sender`.
 	Register(BoxedSystem, Sender<SystemId>),
 	/// Spawn an entity with the IO channels attached. The spawned entity's ID will be sent into the `Sender`.
+	#[deprecated]
 	RegisterIO(AsyncIO, Sender<Entity>),
 	/// Add the `AsyncIOBeacon` `Component` to the given `Entity`.
+	#[deprecated]
 	MarkBeacon(Entity),
 	/// Remove the `AsyncIOBeacon` `Component` from the given `Entity`.
+	#[deprecated]
 	UnmarkBeacon(Entity),
 	/// Run the system specified by the `SystemId` on the given `AsyncWorld`.
 	Run(SystemId),
@@ -62,6 +65,7 @@ impl From<SystemOperation> for AsyncOperation {
 /// A `Component` for vanilla Bevy that facilitates receiving and sending values to an async context.
 #[derive(Debug, Component)]
 #[component(storage = "SparseSet")]
+#[deprecated]
 pub struct AsyncIO {
 	input_rx: AnyReceiver,
 	output_tx: AnySender,
@@ -90,9 +94,12 @@ impl AsyncIO {
 /// The marker `Component` that is manipulated by `SystemOperation::MarkBeacon` and `SystemOperation::UnmarkBeacon`.
 #[derive(Component)]
 #[component(storage = "SparseSet")]
+#[deprecated]
 pub struct AsyncIOBeacon;
 
 /// Represents a registered `System` that can be run asynchronously.
+///
+/// The easiest way to get an `AsyncSystem` is with `AsyncWorld::register_system()`.
 #[derive(Debug)]
 pub struct AsyncSystem {
 	id: SystemId,
@@ -118,6 +125,8 @@ impl AsyncSystem {
 
 /// Represents a registered `System` that accepts input and returns output, and can be run
 /// asynchronously.
+///
+/// The easiest way to get an `AsyncIOSystem` is with `AsyncWorld::register_io_system()`.
 #[derive(Debug)]
 pub struct AsyncIOSystem<I: Send, O: Send> {
 	beacon_location: Entity,

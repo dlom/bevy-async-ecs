@@ -86,6 +86,9 @@ impl From<OperationQueue> for AsyncOperation {
 
 /// Use this to send `Operation`s directly to the Bevy `World`, where they will be applied during
 /// the `Last` schedule.
+///
+/// Senders can be cloned and shared among threads. When all senders associated with an `AsyncWorld`
+/// are dropped, the corresponding receiver in the vanilla Bevy world will be automatically cleaned up.
 #[derive(Clone, Debug)]
 pub struct OperationSender(Sender<AsyncOperation>);
 

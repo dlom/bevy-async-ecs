@@ -1,6 +1,4 @@
-use crate::operation::{
-	AsyncOperation, BoxedCommand, OperationReceiver, OperationSender, ResourceOperation,
-};
+use crate::operation::{AsyncOperation, BoxedCommand, OperationReceiver, OperationSender, ResourceOperation};
 use crate::{AsyncEntity, AsyncIOSystem, AsyncResource, AsyncSystem};
 use bevy_core::Name;
 use bevy_ecs::prelude::*;
@@ -11,18 +9,20 @@ use std::borrow::Cow;
 
 /// Exposes asynchronous access to the Bevy ECS `World`.
 ///
-/// # Commands
+/// The easiest way to get an `AsyncWorld` is with `AsyncWorld::from_world()`.
+///
+/// ## Commands
 /// Apply any `Command` asynchronously with `AsyncWorld::apply_command`.
 ///
-/// # Systems
+/// ## Systems
 /// Just like their synchronous variants, asynchronous `System`s must be registered
 /// before they can be used. Systems can optionally accept and return values asynchronously
 /// if they are registered with `AsyncWorld::register_io_system`.
 ///
-/// # Entities
+/// ## Entities
 /// Spawn entities with the `AsyncWorld::spawn_*` family.
 ///
-/// # Resources
+/// ## Resources
 /// Insert, remove, and wait for resources to exist.
 #[derive(Clone, Debug)]
 pub struct AsyncWorld(OperationSender);

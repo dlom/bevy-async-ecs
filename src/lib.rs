@@ -1,3 +1,6 @@
+// TODO(Bevy 0.13): Remove this (see system.rs comment)
+#![allow(deprecated)]
+
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
