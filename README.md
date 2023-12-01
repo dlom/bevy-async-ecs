@@ -1,4 +1,9 @@
-# Bevy Async ECS
+# 🔄 Bevy Async ECS
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Doc](https://docs.rs/bevy-async-ecs/badge.svg)](https://docs.rs/bevy-async-ecs)
+[![Crate](https://img.shields.io/crates/v/bevy-async-ecs.svg)](https://crates.io/crates/bevy-async-ecs)
+[![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
 
 ## What is Bevy Async ECS?
 
