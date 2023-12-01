@@ -52,5 +52,5 @@ fn main() {
 
 ## Operations
 
-The internal API used to implement the `AsyncWorld` is exposed and documented through the `operations` module. 
+The internal API used to implement the `AsyncWorld` is exposed and documented through the `operation` module. 
 `AsyncOperation`s can be applied directly to an `AsyncWorld`. 

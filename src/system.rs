@@ -1,5 +1,4 @@
-use crate::operations::OperationQueue;
-use crate::{AsyncOperation, OperationSender};
+use crate::operation::{AsyncOperation, OperationQueue, OperationSender};
 use async_channel::{Receiver, Sender};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, Command, SystemId};

@@ -1,6 +1,7 @@
 pub(crate) mod reflect;
 
-use crate::{AsyncOperation, CowStr, OperationSender};
+use crate::operation::OperationSender;
+use crate::{AsyncOperation, CowStr};
 use async_channel::Sender;
 use bevy_core::Name;
 use bevy_ecs::prelude::*;
@@ -64,6 +65,11 @@ impl AsyncEntity {
 	/// Returns the underlying `Entity` being represented.
 	pub fn id(&self) -> Entity {
 		self.id
+	}
+
+	/// Returns a copy of the underlying `OperationSender`.
+	pub fn sender(&self) -> OperationSender {
+		self.sender.clone()
 	}
 
 	pub(crate) fn new(id: Entity, sender: OperationSender) -> Self {

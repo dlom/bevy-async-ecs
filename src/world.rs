@@ -1,7 +1,7 @@
-use crate::operations::{AsyncOperation, BoxedCommand, ResourceOperation};
-use crate::{
-	AsyncEntity, AsyncIOSystem, AsyncResource, AsyncSystem, OperationReceiver, OperationSender,
+use crate::operation::{
+	AsyncOperation, BoxedCommand, OperationReceiver, OperationSender, ResourceOperation,
 };
+use crate::{AsyncEntity, AsyncIOSystem, AsyncResource, AsyncSystem};
 use bevy_core::Name;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::Command;
@@ -36,6 +36,11 @@ impl AsyncWorld {
 	/// Applies the given `Operation` to the world.
 	pub async fn apply_operation(&self, operation: AsyncOperation) {
 		self.0.send(operation).await;
+	}
+
+	/// Returns a copy of the underlying `OperationSender`.
+	pub fn sender(&self) -> OperationSender {
+		self.0.clone()
 	}
 
 	/// Registers a `System` and returns an `AsyncSystem` that can be used to run the system on demand.
@@ -111,10 +116,19 @@ impl AsyncWorld {
 	}
 }
 
+impl From<OperationSender> for AsyncWorld {
+	fn from(sender: OperationSender) -> Self {
+		Self(sender)
+	}
+}
+
 impl FromWorld for AsyncWorld {
 	fn from_world(world: &mut World) -> Self {
 		let (sender, receiver) = async_channel::unbounded();
-		world.spawn((OperationReceiver(receiver), Name::new("OperationReceiver")));
-		Self(OperationSender(sender))
+		world.spawn((
+			OperationReceiver::from(receiver),
+			Name::new("OperationReceiver"),
+		));
+		OperationSender::from(sender).into()
 	}
 }
