@@ -3,7 +3,7 @@
 ## What is Bevy Async ECS?
 
 Bevy Async ECS is an asynchronous interface to the standard Bevy `World`.
-It aims to be simple and intuitive to use to those familiar with Bevy's ECS.
+It aims to be simple and intuitive to use for those familiar with Bevy's ECS.
 
 ## `AsyncWorld`
 
