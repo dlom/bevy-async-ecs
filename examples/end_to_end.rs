@@ -10,6 +10,7 @@ fn main() {
 			let async_world = AsyncWorld::from_world(world);
 			let fut = async move {
 				let key_waiter = KeyWaiter::new(&async_world).await;
+				info!("press the space bar...");
 				loop {
 					key_waiter.wait_for(KeyCode::Space).await;
 					info!("you pressed the space bar!");

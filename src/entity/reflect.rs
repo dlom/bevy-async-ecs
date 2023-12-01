@@ -1,10 +1,11 @@
 use super::EntityOperation;
 use crate::AsyncOperation;
 use async_channel::{Receiver, Sender};
-use bevy::ecs::reflect::ReflectBundle;
-use bevy::ecs::system::Command;
-use bevy::prelude::*;
-use bevy::reflect::TypeRegistry;
+use bevy_ecs::prelude::*;
+use bevy_ecs::reflect::ReflectBundle;
+use bevy_ecs::system::Command;
+use bevy_reflect::prelude::*;
+use bevy_reflect::TypeRegistry;
 use std::any::TypeId;
 use std::marker::PhantomData;
 

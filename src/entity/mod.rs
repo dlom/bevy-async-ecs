@@ -2,8 +2,11 @@ pub(crate) mod reflect;
 
 use crate::{AsyncOperation, CowStr, OperationSender};
 use async_channel::Sender;
-use bevy::ecs::system::Command;
-use bevy::prelude::*;
+use bevy_core::Name;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::Command;
+use bevy_hierarchy::DespawnRecursiveExt;
+use bevy_reflect::prelude::*;
 use reflect::ReflectOperation;
 use std::any::TypeId;
 

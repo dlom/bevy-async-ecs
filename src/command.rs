@@ -1,6 +1,6 @@
 use crate::AsyncOperation;
-use bevy::ecs::system::{Command, CommandQueue};
-use bevy::prelude::*;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::{Command, CommandQueue};
 use std::fmt;
 
 /// The object-safe equivalent of a `Box<dyn Command>`.

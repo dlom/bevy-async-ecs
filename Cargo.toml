@@ -1,7 +1,7 @@
 [package]
 name = "bevy-async-ecs"
 version = "0.1.0"
-authors =  ["Mark Old <dlom234@gmail.com>"]
+authors = ["Mark Old <dlom234@gmail.com>"]
 edition = "2021"
 license = "MIT"
 description = "Asynchronous interface for Bevy ECS"
@@ -10,10 +10,13 @@ keywords = ["bevy", "ecs", "async", "game"]
 categories = ["game-engines", "asynchronous"]
 
 [dependencies]
-# TODO: stop tracking git once 0.12.1 releases
-bevy = { version = "0.12", git = "https://github.com/bevyengine/bevy", rev="951c9bb1a25caddc97ac69bbe8a2937f97227e90", default-features = false }
-async-channel = "1"
+bevy_app = { version = "0.12.1", default-features = false }
+bevy_core = { version = "0.12.1", default-features = false }
+bevy_ecs = { version = "0.12.1", default-features = false }
+bevy_hierarchy = { version = "0.12.1", default-features = false }
+bevy_reflect = { version = "0.12.1", default-features = false }
+async-channel = "2"
 
 [dev-dependencies]
-bevy = { version = "0.12", git = "https://github.com/bevyengine/bevy", rev="951c9bb1a25caddc97ac69bbe8a2937f97227e90" }
-futures-lite = "1"
+bevy = "0.12.1"
+futures-lite = "2"

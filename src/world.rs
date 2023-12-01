@@ -2,8 +2,10 @@ use crate::operations::{AsyncOperation, BoxedCommand, ResourceOperation};
 use crate::{
 	AsyncEntity, AsyncIOSystem, AsyncResource, AsyncSystem, OperationReceiver, OperationSender,
 };
-use bevy::ecs::system::Command;
-use bevy::prelude::*;
+use bevy_core::Name;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::Command;
+use bevy_reflect::prelude::*;
 use std::any::TypeId;
 use std::borrow::Cow;
 

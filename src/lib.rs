@@ -10,8 +10,9 @@ mod system;
 mod world;
 
 use async_channel::{Receiver, Sender, TryRecvError};
-use bevy::ecs::system::Command;
-use bevy::prelude::*;
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
+use bevy_ecs::system::Command;
 use entity::wait_for_reflect_components;
 use operations::AsyncOperation;
 use resource::wait_for_reflect_resources;
@@ -24,8 +25,8 @@ pub use world::AsyncWorld;
 
 /// Types for interacting with the `AsyncWorld` directly, rather than through the convenience commands.
 pub mod operations {
-	use bevy::ecs::system::Command;
-	use bevy::prelude::*;
+	use bevy_ecs::prelude::*;
+	use bevy_ecs::system::Command;
 
 	pub use super::command::BoxedCommand;
 	pub use super::entity::reflect::ReflectOperation;
@@ -82,6 +83,11 @@ pub mod operations {
 			let operation = operation.into();
 			self.0.push(operation);
 		}
+
+		#[cfg(test)]
+		pub(crate) fn len(&self) -> usize {
+			self.0.len()
+		}
 	}
 
 	impl Command for OperationQueue {
@@ -101,26 +107,6 @@ pub mod operations {
 	impl From<OperationQueue> for AsyncOperation {
 		fn from(queue: OperationQueue) -> Self {
 			Self::Queue(queue)
-		}
-	}
-
-	#[cfg(test)]
-	mod tests {
-		use super::*;
-
-		#[test]
-		fn coverage() {
-			let id = Entity::PLACEHOLDER;
-
-			let queue1 = {
-				let mut queue = OperationQueue::default();
-				queue.push(EntityOperation::Despawn(id));
-				queue
-			};
-
-			let queue2 = OperationQueue::from_iter([EntityOperation::Despawn(id).into()]);
-
-			assert_eq!(queue1.0.len(), queue2.0.len());
 		}
 	}
 }
@@ -167,10 +153,7 @@ impl OperationReceiver {
 		loop {
 			match self.0.try_recv() {
 				Ok(system) => queue.0.push(system),
-				Err(TryRecvError::Closed) => {
-					debug!("command receiver closed");
-					break Err(());
-				}
+				Err(TryRecvError::Closed) => break Err(()),
 				Err(TryRecvError::Empty) => break Ok(()),
 			}
 		}
@@ -208,8 +191,8 @@ fn apply_operations(world: &mut World) {
 
 #[cfg(test)]
 mod tests {
-	use crate::operations::{OperationQueue, ReflectOperation};
-	use crate::{AsyncEcsPlugin, AsyncWorld};
+	use super::operations::*;
+	use super::*;
 	use bevy::prelude::*;
 	use futures_lite::future;
 	use std::any::TypeId;
@@ -255,5 +238,20 @@ mod tests {
 		let counter = Counter::take_from_reflect(value).unwrap();
 		assert_eq!(3, counter.0);
 		assert!(app.world.entity(id).get::<Counter>().is_none());
+	}
+
+	#[test]
+	fn coverage() {
+		let id = Entity::PLACEHOLDER;
+
+		let queue1 = {
+			let mut queue = OperationQueue::default();
+			queue.push(EntityOperation::Despawn(id));
+			queue
+		};
+
+		let queue2 = OperationQueue::from_iter([EntityOperation::Despawn(id).into()]);
+
+		assert_eq!(queue1.len(), queue2.len());
 	}
 }
