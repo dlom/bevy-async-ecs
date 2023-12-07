@@ -1,4 +1,5 @@
-use crate::operation::{AsyncOperation, OperationQueue, OperationSender};
+use crate::world::AsyncWorld;
+use crate::{die, recv_and_yield};
 use async_channel::{Receiver, Sender};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, Command, SystemId};
@@ -9,6 +10,7 @@ use std::marker::PhantomData;
 // The AsyncIO and AsyncIOBeacon structs are hacks to enable sending IO to/from a system
 // until Bevy 0.13 lands with https://github.com/bevyengine/bevy/pull/10380.
 // When that happens, this file should be reverted to how it was in 886204a201eb94e54d85c8fb88d5cc722042d244.
+// (and probably rewritten to match the refactor that got rid of operations)
 
 type AnyReceiver = Receiver<Box<dyn Any + Send>>;
 type AnySender = Sender<Box<dyn Any + Send>>;
@@ -37,11 +39,11 @@ impl Command for SystemOperation {
 		match self {
 			SystemOperation::Register(system, sender) => {
 				let id = world.register_boxed_system(system);
-				sender.try_send(id).expect("invariant broken");
+				sender.try_send(id).unwrap_or_else(die);
 			}
 			SystemOperation::RegisterIO(async_io, sender) => {
 				let id = world.spawn(async_io).id();
-				sender.try_send(id).expect("invariant broken");
+				sender.try_send(id).unwrap_or_else(die);
 			}
 			SystemOperation::MarkBeacon(id) => {
 				world.entity_mut(id).insert(AsyncIOBeacon);
@@ -50,15 +52,9 @@ impl Command for SystemOperation {
 				world.entity_mut(id).remove::<AsyncIOBeacon>();
 			}
 			SystemOperation::Run(id) => {
-				world.run_system(id).expect("invariant broken");
+				world.run_system(id).unwrap_or_else(die);
 			}
 		}
-	}
-}
-
-impl From<SystemOperation> for AsyncOperation {
-	fn from(system_op: SystemOperation) -> Self {
-		Self::System(system_op)
 	}
 }
 
@@ -82,12 +78,12 @@ impl AsyncIO {
 
 	/// Synchronously receive input from the async context.
 	pub fn receive_input(&self) -> Box<dyn Any + Send> {
-		self.input_rx.try_recv().expect("invariant broken")
+		self.input_rx.try_recv().unwrap_or_else(die)
 	}
 
 	/// Synchronously send output back to the async context.
 	pub fn send_output(&self, value: Box<dyn Any + Send>) {
-		self.output_tx.try_send(value).expect("invariant broken")
+		self.output_tx.try_send(value).unwrap_or_else(die)
 	}
 }
 
@@ -103,23 +99,23 @@ pub struct AsyncIOBeacon;
 #[derive(Debug)]
 pub struct AsyncSystem {
 	id: SystemId,
-	sender: OperationSender,
+	world: AsyncWorld,
 }
 
 impl AsyncSystem {
-	pub(crate) async fn new(system: BoxedSystem, sender: OperationSender) -> Self {
+	pub(crate) async fn new(system: BoxedSystem, world: AsyncWorld) -> Self {
 		let (id_sender, id_receiver) = async_channel::bounded(1);
 
 		let operation = SystemOperation::Register(system, id_sender);
-		sender.send(operation).await;
+		world.apply(operation).await;
 
-		let id = id_receiver.recv().await.expect("invariant broken");
-		Self { id, sender }
+		let id = recv_and_yield(id_receiver).await;
+		Self { id, world }
 	}
 
 	/// Run the system.
 	pub async fn run(&self) {
-		self.sender.send(SystemOperation::Run(self.id)).await;
+		self.world.apply(SystemOperation::Run(self.id)).await;
 	}
 }
 
@@ -137,20 +133,20 @@ pub struct AsyncIOSystem<I: Send, O: Send> {
 }
 
 impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
-	pub(crate) async fn new<M>(system: impl IntoSystem<I, O, M>, sender: OperationSender) -> Self {
+	pub(crate) async fn new<M>(system: impl IntoSystem<I, O, M>, world: AsyncWorld) -> Self {
 		let (input_tx, input_rx) = async_channel::unbounded();
 		let (output_tx, output_rx) = async_channel::unbounded();
 		let (beacon_tx, beacon_rx) = async_channel::bounded(1);
 
 		let async_io = AsyncIO::new(input_rx, output_tx);
 		let operation = SystemOperation::RegisterIO(async_io, beacon_tx);
-		sender.send(operation).await;
-		let beacon_location = beacon_rx.recv().await.expect("invariant broken");
+		world.apply(operation).await;
+		let beacon_location = recv_and_yield(beacon_rx).await;
 
 		fn receive_input<I: Send + 'static>(query: Query<&AsyncIO, With<AsyncIOBeacon>>) -> I {
-			let async_io = query.get_single().expect("invariant broken");
+			let async_io = query.get_single().unwrap_or_else(die);
 			let boxed = async_io.receive_input();
-			let concrete = boxed.downcast().expect("invariant broken");
+			let concrete = boxed.downcast().unwrap_or_else(die);
 			*concrete
 		}
 
@@ -158,12 +154,12 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 			In(output): In<O>,
 			query: Query<&AsyncIO, With<AsyncIOBeacon>>,
 		) {
-			let async_io = query.get_single().expect("invariant broken");
+			let async_io = query.get_single().unwrap_or_else(die);
 			async_io.send_output(Box::new(output));
 		}
 
 		let system = Box::new(receive_input.pipe(system).pipe(send_output));
-		let inner = AsyncSystem::new(system, sender).await;
+		let inner = AsyncSystem::new(system, world).await;
 
 		Self {
 			beacon_location,
@@ -176,20 +172,21 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 
 	/// Run the system.
 	pub async fn run(&self, i: I) -> O {
+		use SystemOperation::*;
+		let world = &self.inner.world;
+
 		let i = Box::new(i);
-		self.input_tx.send(i).await.expect("invariant broken");
+		self.input_tx.send(i).await.unwrap_or_else(die);
 
-		let operation = {
-			let mut queue = OperationQueue::default();
-			queue.push(SystemOperation::MarkBeacon(self.beacon_location));
-			queue.push(SystemOperation::Run(self.inner.id));
-			queue.push(SystemOperation::UnmarkBeacon(self.beacon_location));
-			queue
-		};
-		self.inner.sender.send(operation).await;
+		let queue = world
+			.start_queue()
+			.push(MarkBeacon(self.beacon_location))
+			.push(Run(self.inner.id))
+			.push(UnmarkBeacon(self.beacon_location));
+		queue.apply().await;
 
-		let boxed = self.output_rx.recv().await.expect("invariant broken");
-		let concrete = boxed.downcast().expect("invariant broken");
+		let boxed = recv_and_yield(self.output_rx.clone()).await;
+		let concrete = boxed.downcast().unwrap_or_else(die);
 		*concrete
 	}
 }
@@ -199,7 +196,7 @@ mod tests {
 	use crate::world::AsyncWorld;
 	use crate::AsyncEcsPlugin;
 	use bevy::prelude::*;
-	use futures_lite::future;
+	use bevy::tasks::AsyncComputeTaskPool;
 
 	#[derive(Component)]
 	struct Counter(u8);
@@ -241,13 +238,13 @@ mod tests {
 		let (barrier_tx, barrier_rx) = async_channel::bounded(1);
 		let async_world = AsyncWorld::from_world(&mut app.world);
 
-		std::thread::spawn(move || {
-			future::block_on(async move {
+		AsyncComputeTaskPool::get()
+			.spawn(async move {
 				let increase_counter_all = async_world.register_system(increase_counter_all).await;
 				increase_counter_all.run().await;
 				barrier_tx.send(()).await.unwrap();
-			});
-		});
+			})
+			.detach();
 
 		loop {
 			match barrier_rx.try_recv() {
@@ -270,8 +267,8 @@ mod tests {
 		let (sender, receiver) = async_channel::bounded(1);
 		let async_world = AsyncWorld::from_world(&mut app.world);
 
-		std::thread::spawn(move || {
-			future::block_on(async move {
+		AsyncComputeTaskPool::get()
+			.spawn(async move {
 				let increase_counter = async_world
 					.register_io_system::<Entity, (), _>(increase_counter)
 					.await;
@@ -282,8 +279,8 @@ mod tests {
 				increase_counter.run(id).await;
 				let value = get_counter_value.run(id).await;
 				sender.send(value).await.unwrap();
-			});
-		});
+			})
+			.detach();
 
 		let value = loop {
 			match receiver.try_recv() {

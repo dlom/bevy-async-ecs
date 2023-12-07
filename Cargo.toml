@@ -1,6 +1,6 @@
 [package]
 name = "bevy-async-ecs"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Mark Old <dlom234@gmail.com>"]
 edition = "2021"
 license = "MIT"
@@ -12,11 +12,25 @@ categories = ["game-engines", "asynchronous"]
 [dependencies]
 bevy_app = { version = "0.12.1", default-features = false }
 bevy_core = { version = "0.12.1", default-features = false }
+bevy_utils = { version = "0.12.1", default-features = false }
 bevy_ecs = { version = "0.12.1", default-features = false }
 bevy_hierarchy = { version = "0.12.1", default-features = false }
-bevy_reflect = { version = "0.12.1", default-features = false }
 async-channel = "2"
+async-lock = "3"
+futures-lite = "2"
+async-io = "2"
+
 
 [dev-dependencies]
-bevy = "0.12.1"
-futures-lite = "2"
+bevy = { version = "0.12.1", default-features = false, features = [
+	"bevy_winit",
+	"x11",
+	"bevy_gltf",
+	"bevy_scene",
+	"bevy_ui",
+	"png",
+	"ktx2",
+	"zstd",
+	"tonemapping_luts",
+	"multi-threaded",
+] }

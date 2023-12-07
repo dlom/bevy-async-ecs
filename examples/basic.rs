@@ -20,6 +20,7 @@ fn main() {
 				let entity = async_world.spawn_named("Frank").await;
 				print_names.run().await;
 				entity.despawn().await;
+				info!("done! you can close the window");
 			};
 			AsyncComputeTaskPool::get().spawn(fut).detach();
 		})

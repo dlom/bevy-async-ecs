@@ -1,6 +1,5 @@
 // TODO(Bevy 0.13): Remove this (see system.rs comment)
 #![allow(deprecated)]
-
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -8,27 +7,47 @@
 
 mod command;
 mod entity;
-mod resource;
 mod system;
+mod wait_for;
 mod world;
 
+use crate::command::{apply_commands, initialize_command_queue, receive_commands};
+use crate::wait_for::{drive_waiting_for, initialize_waiters};
+use async_channel::Receiver;
+use async_io::Timer;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use entity::wait_for_reflect_components;
-use operation::AsyncOperation;
-use resource::wait_for_reflect_resources;
-use std::borrow::Cow;
+use bevy_utils::Duration;
+use futures_lite::{future, pin};
 
-use crate::operation::{apply_operations, receive_operations, WorldOperationQueue};
+pub use command::{BoxedCommand, CommandQueueSender};
 pub use entity::{AsyncComponent, AsyncEntity};
-pub use resource::AsyncResource;
 pub use system::{AsyncIOSystem, AsyncSystem};
-pub use world::AsyncWorld;
+pub use world::{AsyncEvents, AsyncResource, AsyncWorld};
 
-/// Types for interacting with the `AsyncWorld` directly, rather than through the convenience commands.
-pub mod operation;
+type CowStr = std::borrow::Cow<'static, str>;
 
-type CowStr = Cow<'static, str>;
+#[inline(never)]
+#[cold]
+#[track_caller]
+fn die<T, E: std::fmt::Debug>(e: E) -> T {
+	panic!("invariant broken: {:?}", e)
+}
+
+async fn recv_and_yield<T>(receiver: Receiver<T>) -> T {
+	const SLEEP: Duration = Duration::from_millis(1);
+
+	let recv_fut = receiver.recv();
+	pin!(recv_fut);
+	loop {
+		if let Some(value) = future::poll_once(recv_fut.as_mut()).await {
+			return value.unwrap_or_else(die);
+		} else {
+			future::yield_now().await;
+			Timer::after(SLEEP).await;
+		}
+	}
+}
 
 /// Adds asynchronous ECS operations to Bevy `App`s.
 #[derive(Debug)]
@@ -36,14 +55,37 @@ pub struct AsyncEcsPlugin;
 
 impl Plugin for AsyncEcsPlugin {
 	fn build(&self, app: &mut App) {
-		app.init_resource::<WorldOperationQueue>()
+		app.add_systems(PreStartup, (initialize_command_queue, initialize_waiters))
 			.add_systems(
 				Last,
-				(receive_operations, apply_operations, apply_deferred).chain(),
+				(receive_commands, apply_commands, apply_deferred).chain(),
 			)
-			.add_systems(
-				PostUpdate,
-				(wait_for_reflect_components, wait_for_reflect_resources),
-			);
+			.add_systems(PostUpdate, (drive_waiting_for, apply_deferred).chain());
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::recv_and_yield;
+	use futures_lite::{future, pin};
+
+	#[test]
+	#[should_panic(expected = "invariant broken: RecvError")]
+	fn die() {
+		let (rx, tx) = async_channel::bounded::<()>(1);
+		rx.close();
+		future::block_on(recv_and_yield(tx));
+	}
+
+	#[test]
+	fn no_die() {
+		let (tx, rx) = async_channel::bounded::<u8>(1);
+		let fut = recv_and_yield(rx);
+		pin!(fut);
+		assert!(future::block_on(future::poll_once(&mut fut)).is_none());
+		assert!(future::block_on(future::poll_once(&mut fut)).is_none());
+		assert!(future::block_on(future::poll_once(&mut fut)).is_none());
+		tx.try_send(3).unwrap();
+		assert_eq!(3, future::block_on(fut));
 	}
 }

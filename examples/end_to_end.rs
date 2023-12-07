@@ -9,6 +9,7 @@ fn main() {
 		.add_systems(Startup, |world: &mut World| {
 			let async_world = AsyncWorld::from_world(world);
 			let fut = async move {
+				info!("started");
 				let key_waiter = KeyWaiter::new(&async_world).await;
 				info!("press the space bar...");
 				loop {
@@ -42,17 +43,14 @@ mod key_wait {
 
 	impl Plugin for KeyWaitPlugin {
 		fn build(&self, app: &mut App) {
-			app.register_type::<WaitingForKey>()
-				.register_type::<KeyPressed>()
-				.add_systems(
-					PreUpdate,
-					wait_for_key.run_if(any_with_component::<WaitingForKey>()),
-				);
+			app.add_systems(
+				PreUpdate,
+				wait_for_key.run_if(any_with_component::<WaitingForKey>()),
+			);
 		}
 	}
 
-	#[derive(Component, Reflect)]
-	#[reflect(Component)]
+	#[derive(Component)]
 	pub struct WaitingForKey(pub KeyCode);
 
 	impl Default for WaitingForKey {
@@ -61,8 +59,7 @@ mod key_wait {
 		}
 	}
 
-	#[derive(Default, Component, Reflect)]
-	#[reflect(Component)]
+	#[derive(Default, Clone, Component)]
 	pub struct KeyPressed;
 
 	fn wait_for_key(
