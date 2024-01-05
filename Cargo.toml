@@ -22,6 +22,7 @@ async-io = "2"
 
 
 [dev-dependencies]
+rand = { version = "0.8", default-features = false, features = ["small_rng", "getrandom"] }
 bevy = { version = "0.12.1", default-features = false, features = [
 	"bevy_winit",
 	"x11",

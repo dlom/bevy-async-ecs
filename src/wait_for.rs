@@ -178,9 +178,13 @@ fn process_waiting_events<E: Event + Clone>(
 		return;
 	}
 
-	let events: Vec<E> = event_reader.read().cloned().collect();
+	let events: Vec<&E> = event_reader.read().collect();
+	if events.is_empty() {
+		return;
+	}
+
 	for (id, waiting_for) in query.iter() {
-		'events: for event in &events {
+		'events: for &event in &events {
 			if let Err(e) = waiting_for.0.try_send(event.clone()) {
 				match e {
 					e @ TrySendError::Full(_) => die(e),
