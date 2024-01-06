@@ -21,12 +21,13 @@ Internally, the `AsyncWorld` simply wraps an MPSC channel sender.
 As such, it can be cheaply cloned and further sent to separate threads or tasks.
 This means that all operations on the `AsyncWorld` are processed in FIFO order.
 However, there are no ordering guarantees between `AsyncWorld`s or any derivatives sharing the same internal channel
-sender.
-If ordering guarantees are required, you can use the operations API described below (`AsyncOperation::Queue`).
+sender, or any `AsyncWorld`s constructed separately. 
 
 It is important to note that Bevy is still running and mutating the world while the async tasks run! Assume that the
-world
-can be mutated
+world could have been mutated between any asynchronous call. However, there are several ways to ensure that multiple commands
+are applied together, without mutation of the world in between:
+* Construct a vanilla Bevy `CommandQueue`, and send it to the Bevy `World` with `CommandQueueSender::send_queue()`
+* Use the queue builder provided by the `AsyncWorld` via `AsyncWorld::start_queue()`
 
 ## Basic example
 
@@ -64,4 +65,4 @@ fn main() {
 
 `bevy-async-ecs` does not explicitly require the `multi-threaded` feature (though all the tests and examples do).
 However, when the task executor is running on a single thread (on wasm, for example), the async world will probably
-deadlock.
+deadlock. If this is a pain-point for you, please open a GitHub issue.

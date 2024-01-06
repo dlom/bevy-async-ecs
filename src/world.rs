@@ -36,8 +36,6 @@ impl AsyncWorld {
 	}
 
 	/// Applies the given `Command` to the world.
-	///
-	/// If the world is queueing, this merely adds the given command to the queue.
 	pub async fn apply<C: Command>(&self, command: C) {
 		self.0.send_single(BoxedCommand::new(command)).await
 	}

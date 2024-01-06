@@ -20,7 +20,7 @@ use bevy_ecs::prelude::*;
 use bevy_utils::Duration;
 use futures_lite::{future, pin};
 
-pub use command::{BoxedCommand, CommandQueueSender};
+pub use command::{BoxedCommand, CommandQueueSender, CommandQueueBuilder};
 pub use entity::{AsyncComponent, AsyncEntity};
 pub use system::{AsyncIOSystem, AsyncSystem};
 pub use world::{AsyncEvents, AsyncResource, AsyncWorld};

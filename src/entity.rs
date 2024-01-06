@@ -35,7 +35,7 @@ impl AsyncEntity {
 		self.world.sender()
 	}
 
-	/// Despawns the represented entity.
+	/// Recursively despawns the represented entity.
 	pub async fn despawn(self) {
 		self.world.apply(DespawnRecursive { entity: self.id }).await;
 	}

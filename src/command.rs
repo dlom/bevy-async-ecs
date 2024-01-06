@@ -39,6 +39,8 @@ impl Command for BoxedCommand {
 
 /// Builds a `CommandQueue` that can by applied to the world that the builder was
 /// constructed from.
+///
+/// The easiest way to get a `CommandQueueBuilder` is with `AsyncWorld::start_queue()`
 pub struct CommandQueueBuilder {
 	inner: CommandQueue,
 	sender: CommandQueueSender,
@@ -63,6 +65,14 @@ impl CommandQueueBuilder {
 	/// This function is meant to be the end of the chain.
 	pub async fn apply(self) {
 		self.sender.send_queue(self.inner).await;
+	}
+
+	/// Return the built `CommandQueue` _without_ applying it to the world it was
+	/// constructed from.
+	///
+	/// This function is meant to be the end of the chain.
+	pub fn build(self) -> CommandQueue {
+		self.inner
 	}
 }
 
