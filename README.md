@@ -66,3 +66,10 @@ fn main() {
 `bevy-async-ecs` does not explicitly require the `multi-threaded` feature (though all the tests and examples do).
 However, when the task executor is running on a single thread (on wasm, for example), the async world will probably
 deadlock. If this is a pain-point for you, please open a GitHub issue.
+
+## Most recently compatible version
+
+| bevy | bevy-async-ecs |
+|------|----------------|
+| 0.12 | 0.4            |
+| 0.11 | N/A            |

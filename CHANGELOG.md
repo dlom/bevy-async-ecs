@@ -1,3 +1,8 @@
+# 0.4.0
+
+- Properly exposed `CommandQueueSender` as a public API.
+- Doc improvements
+
 # 0.3.0
 
 - (Mostly) complete rewrite of internal API.

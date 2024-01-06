@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-async-ecs"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "async-channel 2.1.1",
  "async-io",
