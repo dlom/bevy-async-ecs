@@ -283,10 +283,10 @@ mod tests {
 			.spawn(async move {
 				let increase_counter = async_world
 					.register_io_system::<Entity, (), _>(increase_counter)
-					.await.clone();
+					.await;
 				let get_counter_value = async_world
 					.register_io_system::<Entity, u8, _>(get_counter_value)
-					.await.clone();
+					.await;
 
 				increase_counter.run(id).await;
 				let value = get_counter_value.run(id).await;
