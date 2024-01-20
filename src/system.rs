@@ -123,13 +123,25 @@ impl AsyncSystem {
 /// asynchronously.
 ///
 /// The easiest way to get an `AsyncIOSystem` is with `AsyncWorld::register_io_system()`.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AsyncIOSystem<I: Send, O: Send> {
 	beacon_location: Entity,
 	input_tx: AnySender,
 	output_rx: AnyReceiver,
 	inner: AsyncSystem,
 	_pd: PhantomData<fn(I) -> O>,
+}
+
+impl<I: Send, O: Send> Clone for AsyncIOSystem<I, O> {
+	fn clone(&self) -> Self {
+		Self {
+			beacon_location: self.beacon_location,
+			input_tx: self.input_tx.clone(),
+			output_rx: self.output_rx.clone(),
+			inner: self.inner.clone(),
+			_pd: PhantomData,
+		}
+	}
 }
 
 impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
@@ -271,10 +283,10 @@ mod tests {
 			.spawn(async move {
 				let increase_counter = async_world
 					.register_io_system::<Entity, (), _>(increase_counter)
-					.await;
+					.await.clone();
 				let get_counter_value = async_world
 					.register_io_system::<Entity, u8, _>(get_counter_value)
-					.await;
+					.await.clone();
 
 				increase_counter.run(id).await;
 				let value = get_counter_value.run(id).await;
