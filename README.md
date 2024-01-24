@@ -71,5 +71,5 @@ deadlock. If this is a pain-point for you, please open a GitHub issue.
 
 | bevy | bevy-async-ecs |
 |------|----------------|
-| 0.12 | 0.4            |
+| 0.12 | 0.4.1          |
 | 0.11 | N/A            |

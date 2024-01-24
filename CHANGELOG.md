@@ -1,3 +1,7 @@
+# 0.4.1
+
+- `impl Clone` for `AsyncSystem` and `AsyncIOSystem`
+
 # 0.4.0
 
 - Properly exposed `CommandQueueSender` as a public API.
