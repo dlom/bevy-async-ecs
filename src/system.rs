@@ -96,7 +96,7 @@ pub struct AsyncIOBeacon;
 /// Represents a registered `System` that can be run asynchronously.
 ///
 /// The easiest way to get an `AsyncSystem` is with `AsyncWorld::register_system()`.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AsyncSystem {
 	id: SystemId,
 	world: AsyncWorld,
@@ -130,6 +130,18 @@ pub struct AsyncIOSystem<I: Send, O: Send> {
 	output_rx: AnyReceiver,
 	inner: AsyncSystem,
 	_pd: PhantomData<fn(I) -> O>,
+}
+
+impl<I: Send, O: Send> Clone for AsyncIOSystem<I, O> {
+	fn clone(&self) -> Self {
+		Self {
+			beacon_location: self.beacon_location,
+			input_tx: self.input_tx.clone(),
+			output_rx: self.output_rx.clone(),
+			inner: self.inner.clone(),
+			_pd: PhantomData,
+		}
+	}
 }
 
 impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
