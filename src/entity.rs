@@ -1,10 +1,11 @@
 use crate::command::CommandQueueSender;
+use crate::util::{insert, remove};
 use crate::wait_for::StartWaitingFor;
 use crate::world::AsyncWorld;
 use crate::{die, recv_and_yield};
 use async_channel::{Receiver, Sender};
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::{Command, Insert, Remove};
+use bevy_ecs::system::Command;
 use bevy_hierarchy::DespawnRecursive;
 use std::fmt;
 
@@ -43,17 +44,12 @@ impl AsyncEntity {
 	/// Adds a `Bundle` of components to the entity. This will overwrite any previous value(s) of
 	/// the same component type.
 	pub async fn insert<B: Bundle>(&self, bundle: B) {
-		self.world
-			.apply(Insert {
-				entity: self.id,
-				bundle,
-			})
-			.await;
+		self.world.apply(insert(self.id, bundle)).await;
 	}
 
 	/// Removes a `Bundle` of components from the entity.
 	pub async fn remove<B: Bundle>(&self) {
-		self.world.apply(Remove::<B>::new(self.id)).await;
+		self.world.apply(remove::<B>(self.id)).await;
 	}
 
 	/// Start waiting for the `Component` of a given type. Returns an `AsyncComponent` which can be further

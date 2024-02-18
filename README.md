@@ -67,9 +67,10 @@ fn main() {
 However, when the task executor is running on a single thread (on wasm, for example), the async world will probably
 deadlock. If this is a pain-point for you, please open a GitHub issue.
 
-## Most recently compatible version
+## Most recently compatible versions
 
 | bevy | bevy-async-ecs |
 |------|----------------|
+| 0.13 | 0.5.0          |
 | 0.12 | 0.4.1          |
 | 0.11 | N/A            |

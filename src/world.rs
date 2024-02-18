@@ -1,12 +1,13 @@
 use crate::command::{BoxedCommand, CommandQueueBuilder, CommandQueueReceiver, CommandQueueSender};
 use crate::entity::{AsyncEntity, SpawnAndSendId};
 use crate::system::{AsyncIOSystem, AsyncSystem};
+use crate::util::{insert_resource, remove_resource};
 use crate::wait_for::StartWaitingFor;
-use crate::{recv_and_yield, CowStr};
+use crate::{die, recv_and_yield, CowStr};
 use async_channel::Receiver;
 use bevy_core::Name;
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::{Command, InsertResource, RemoveResource};
+use bevy_ecs::system::Command;
 use std::fmt;
 
 /// Exposes asynchronous access to the Bevy ECS `World`.
@@ -46,7 +47,10 @@ impl AsyncWorld {
 	}
 
 	/// Registers a `System` and returns an `AsyncSystem` that can be used to run the system on demand.
-	pub async fn register_system<M>(&self, system: impl IntoSystem<(), (), M>) -> AsyncSystem {
+	pub async fn register_system<M>(
+		&self,
+		system: impl IntoSystem<(), (), M> + Send,
+	) -> AsyncSystem {
 		let system = Box::new(IntoSystem::into_system(system));
 		AsyncSystem::new(system, self.clone()).await
 	}
@@ -55,7 +59,7 @@ impl AsyncWorld {
 	/// while supplying an input value and receiving an output value.
 	pub async fn register_io_system<I: Send + 'static, O: Send + 'static, M>(
 		&self,
-		system: impl IntoSystem<I, O, M>,
+		system: impl IntoSystem<I, O, M> + Send,
 	) -> AsyncIOSystem<I, O> {
 		AsyncIOSystem::new(system, self.clone()).await
 	}
@@ -87,18 +91,18 @@ impl AsyncWorld {
 	/// Spawns a new `Entity` and returns an `AsyncEntity` that represents it, which can be used
 	/// to further manipulate the entity. This function attaches a bevy `Name` component with the given
 	/// value.
-	pub async fn spawn_named(&self, name: impl Into<CowStr>) -> AsyncEntity {
+	pub async fn spawn_named(&self, name: impl Into<CowStr> + Send) -> AsyncEntity {
 		self.spawn(Name::new(name)).await
 	}
 
 	/// Inserts a new resource or updates an existing resource with the given value.
 	pub async fn insert_resource<R: Resource>(&self, resource: R) {
-		self.apply(InsertResource { resource }).await;
+		self.apply(insert_resource(resource)).await;
 	}
 
 	/// Removes the resource of a given type, if it exists.
 	pub async fn remove_resource<R: Resource>(&self) {
-		self.apply(RemoveResource::<R>::new()).await;
+		self.apply(remove_resource::<R>()).await;
 	}
 
 	/// Start waiting for the `Resource` of a given type. Returns an `AsyncResource` which can be further
@@ -184,7 +188,10 @@ struct SendEvent<E: Event>(E);
 
 impl<E: Event> Command for SendEvent<E> {
 	fn apply(self, world: &mut World) {
-		world.send_event(self.0)
+		world
+			.send_event(self.0)
+			.ok_or("failed to send event")
+			.unwrap_or_else(die);
 	}
 }
 

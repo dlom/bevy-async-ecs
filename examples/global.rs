@@ -27,7 +27,7 @@ fn init_async_world(world: &mut World) {
 #[derive(Event)]
 struct EntitySpawned;
 
-fn spawn_entity_via_async(input: Res<Input<KeyCode>>) {
+fn spawn_entity_via_async(input: Res<ButtonInput<KeyCode>>) {
 	if input.just_pressed(KeyCode::Space) {
 		AsyncComputeTaskPool::get()
 			.spawn(async move {

@@ -45,7 +45,7 @@ mod key_wait {
 		fn build(&self, app: &mut App) {
 			app.add_systems(
 				PreUpdate,
-				wait_for_key.run_if(any_with_component::<WaitingForKey>()),
+				wait_for_key.run_if(any_with_component::<WaitingForKey>),
 			);
 		}
 	}
@@ -64,7 +64,7 @@ mod key_wait {
 
 	fn wait_for_key(
 		mut commands: Commands,
-		input: Res<Input<KeyCode>>,
+		input: Res<ButtonInput<KeyCode>>,
 		query: Query<(Entity, &WaitingForKey), Without<KeyPressed>>,
 	) {
 		for (id, wfk) in query.iter() {

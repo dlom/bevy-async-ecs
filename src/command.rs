@@ -133,7 +133,7 @@ impl CommandQueueReceiver {
 }
 
 #[derive(Resource)]
-pub(crate) struct WorldCommandQueue(Vec<CommandQueue>, Vec<Sender<()>>);
+pub(crate) struct WorldCommandQueue(Vec<CommandQueue>);
 
 impl WorldCommandQueue {
 	pub(crate) fn drain(&mut self) -> Vec<CommandQueue> {
@@ -143,7 +143,7 @@ impl WorldCommandQueue {
 
 impl Default for WorldCommandQueue {
 	fn default() -> Self {
-		Self(Vec::with_capacity(16), Vec::with_capacity(4))
+		Self(Vec::with_capacity(16))
 	}
 }
 
@@ -176,11 +176,11 @@ pub(crate) fn apply_commands(world: &mut World) {
 
 #[cfg(test)]
 mod tests {
+	use crate::util::insert;
 	use crate::wait_for::StartWaitingFor;
 	use crate::{AsyncEcsPlugin, AsyncEntity, AsyncWorld};
 	use bevy::prelude::*;
 	use bevy::tasks::AsyncComputeTaskPool;
-	use bevy_ecs::system::Insert;
 
 	use super::*;
 
@@ -237,10 +237,7 @@ mod tests {
 		let fut = async move {
 			async_world
 				.start_queue()
-				.push(Insert {
-					entity: id,
-					bundle: Counter(3),
-				})
+				.push(insert(id, Counter(3)))
 				.push(start_waiting_for)
 				.apply()
 				.await;

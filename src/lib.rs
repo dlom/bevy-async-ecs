@@ -3,11 +3,13 @@
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
+#![warn(clippy::future_not_send)]
 #![doc = include_str!("../README.md")]
 
 mod command;
 mod entity;
 mod system;
+mod util;
 mod wait_for;
 mod world;
 
@@ -20,7 +22,7 @@ use bevy_ecs::prelude::*;
 use bevy_utils::Duration;
 use futures_lite::{future, pin};
 
-pub use command::{BoxedCommand, CommandQueueSender, CommandQueueBuilder};
+pub use command::{BoxedCommand, CommandQueueBuilder, CommandQueueSender};
 pub use entity::{AsyncComponent, AsyncEntity};
 pub use system::{AsyncIOSystem, AsyncSystem};
 pub use world::{AsyncEvents, AsyncResource, AsyncWorld};
@@ -34,7 +36,7 @@ fn die<T, E: std::fmt::Debug>(e: E) -> T {
 	panic!("invariant broken: {:?}", e)
 }
 
-async fn recv_and_yield<T>(receiver: Receiver<T>) -> T {
+async fn recv_and_yield<T: Send>(receiver: Receiver<T>) -> T {
 	const SLEEP: Duration = Duration::from_millis(1);
 
 	let recv_fut = receiver.recv();
