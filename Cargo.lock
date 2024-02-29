@@ -233,25 +233,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-io"
-version = "2.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6d3b15875ba253d1110c740755e246537483f152fa334f91abd7fe84c88b3ff"
-dependencies = [
- "async-lock",
- "cfg-if",
- "concurrent-queue",
- "futures-io",
- "futures-lite",
- "parking",
- "polling",
- "rustix",
- "slab",
- "tracing",
- "windows-sys 0.52.0",
-]
-
-[[package]]
 name = "async-lock"
 version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -300,7 +281,6 @@ name = "bevy-async-ecs"
 version = "0.5.0"
 dependencies = [
  "async-channel",
- "async-io",
  "async-lock",
  "bevy",
  "bevy_app",

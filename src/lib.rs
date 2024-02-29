@@ -1,5 +1,3 @@
-// TODO(Bevy 0.13): Remove this (see system.rs comment)
-#![allow(deprecated)]
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -16,10 +14,8 @@ mod world;
 use crate::command::{apply_commands, initialize_command_queue, receive_commands};
 use crate::wait_for::{drive_waiting_for, initialize_waiters};
 use async_channel::Receiver;
-use async_io::Timer;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_utils::Duration;
 use futures_lite::{future, pin};
 
 pub use command::{BoxedCommand, CommandQueueBuilder, CommandQueueSender};
@@ -37,8 +33,6 @@ fn die<T, E: std::fmt::Debug>(e: E) -> T {
 }
 
 async fn recv_and_yield<T: Send>(receiver: Receiver<T>) -> T {
-	const SLEEP: Duration = Duration::from_millis(1);
-
 	let recv_fut = receiver.recv();
 	pin!(recv_fut);
 	loop {
@@ -46,7 +40,6 @@ async fn recv_and_yield<T: Send>(receiver: Receiver<T>) -> T {
 			return value.unwrap_or_else(die);
 		} else {
 			future::yield_now().await;
-			Timer::after(SLEEP).await;
 		}
 	}
 }

@@ -18,8 +18,6 @@ bevy_hierarchy = { version = "0.13", default-features = false, features = ["bevy
 async-channel = "2"
 async-lock = "3"
 futures-lite = "2"
-async-io = "2"
-
 
 [dev-dependencies]
 rand = { version = "0.8", default-features = false, features = ["small_rng", "getrandom"] }
