@@ -14,7 +14,7 @@ type BoxedSystemWithIO = BoxedSystem<BoxedAnySend, BoxedAnySend>;
 /// The easiest way to get an `AsyncSystem` is with `AsyncWorld::register_system()`.
 #[derive(Debug, Clone)]
 pub struct AsyncSystem {
-	id: SystemId,
+	pub id: SystemId,
 	world: AsyncWorld,
 }
 
@@ -48,7 +48,7 @@ impl AsyncSystem {
 /// The easiest way to get an `AsyncIOSystem` is with `AsyncWorld::register_io_system()`.
 #[derive(Debug)]
 pub struct AsyncIOSystem<I: Send, O: Send> {
-	id: SystemIdWithIO,
+	pub id: SystemIdWithIO,
 	world: AsyncWorld,
 	_pd: PhantomData<fn(I) -> O>,
 }
