@@ -4,6 +4,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, SystemId};
 use std::any::Any;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 type BoxedAnySend = Box<dyn Any + Send>;
 type SystemIdWithIO = SystemId<BoxedAnySend, BoxedAnySend>;
@@ -11,10 +12,13 @@ type BoxedSystemWithIO = BoxedSystem<BoxedAnySend, BoxedAnySend>;
 
 /// Represents a registered `System` that can be run asynchronously.
 ///
+/// Dropping an `AsyncSystem` will not unregister it. Use `AsyncSystem::unregister()`
+/// to clean up an `AsyncSystem` from the main bevy `World`.
+///
 /// The easiest way to get an `AsyncSystem` is with `AsyncWorld::register_system()`.
 #[derive(Debug, Clone)]
 pub struct AsyncSystem {
-	id: SystemId,
+	id: Arc<SystemId>,
 	world: AsyncWorld,
 }
 
@@ -28,27 +32,47 @@ impl AsyncSystem {
 			})
 			.await;
 		let id = recv_and_yield(id_rx).await;
+		let id = Arc::new(id);
 		Self { id, world }
 	}
 
 	/// Run the system.
 	pub async fn run(&self) {
-		let id = self.id;
+		let id = *self.id;
 		self.world
 			.apply(move |world: &mut World| {
 				world.run_system(id).unwrap_or_else(die);
 			})
 			.await;
 	}
+
+	/// Unregister the system.
+	///
+	/// If multiple clones of the AsyncSystem exist, a reference counter will be
+	/// decremented instead. The system will be unregistered when the counter
+	/// decrements to zero.
+	pub async fn unregister(self) {
+		let Self { id, world } = self;
+		if let Some(id) = Arc::into_inner(id) {
+			world
+				.apply(move |world: &mut World| {
+					world.remove_system(id).unwrap_or_else(die);
+				})
+				.await;
+		}
+	}
 }
 
 /// Represents a registered `System` that accepts input and returns output, and can be run
 /// asynchronously.
 ///
+/// Dropping an `AsyncIOSystem` will not unregister it. Use `AsyncSystemIO::unregister()`
+/// to clean up an `AsyncSystemIO` from the main bevy `World`.
+///
 /// The easiest way to get an `AsyncIOSystem` is with `AsyncWorld::register_io_system()`.
 #[derive(Debug)]
 pub struct AsyncIOSystem<I: Send, O: Send> {
-	id: SystemIdWithIO,
+	id: Arc<SystemIdWithIO>,
 	world: AsyncWorld,
 	_pd: PhantomData<fn(I) -> O>,
 }
@@ -56,7 +80,7 @@ pub struct AsyncIOSystem<I: Send, O: Send> {
 impl<I: Send, O: Send> Clone for AsyncIOSystem<I, O> {
 	fn clone(&self) -> Self {
 		Self {
-			id: self.id,
+			id: Arc::clone(&self.id),
 			world: self.world.clone(),
 			_pd: PhantomData,
 		}
@@ -85,6 +109,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 			.await;
 
 		let id = recv_and_yield(id_rx).await;
+		let id = Arc::new(id);
 
 		Self {
 			id,
@@ -101,7 +126,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 		let input: BoxedAnySend = Box::new(input);
 		input_tx.send(input).await.unwrap_or_else(die);
 
-		let id = self.id;
+		let id = *self.id;
 		self.world
 			.apply(move |world: &mut World| {
 				let input = input_rx.try_recv().unwrap_or_else(die);
@@ -114,12 +139,29 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 		let concrete = boxed.downcast().unwrap_or_else(die);
 		*concrete
 	}
+
+	/// Unregister the system.
+	///
+	/// If multiple clones of the AsyncIOSystem exist, a reference counter will be
+	/// decremented instead. The system will be unregistered when the counter
+	/// decrements to zero.
+	pub async fn unregister(self) {
+		let Self { id, world, _pd } = self;
+		if let Some(id) = Arc::into_inner(id) {
+			world
+				.apply(move |world: &mut World| {
+					world.remove_system(id).unwrap_or_else(die);
+				})
+				.await
+		}
+	}
 }
 
 #[cfg(test)]
 mod tests {
 	use crate::world::AsyncWorld;
 	use crate::AsyncEcsPlugin;
+	use bevy::ecs::system::RegisteredSystemError;
 	use bevy::prelude::*;
 	use bevy::tasks::AsyncComputeTaskPool;
 
@@ -183,6 +225,46 @@ mod tests {
 	}
 
 	#[test]
+	fn normal_unregister() {
+		let mut app = App::new();
+		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
+		let id = app.world.spawn(Counter(0)).id();
+		assert_counter!(id, 0, &app.world);
+
+		let (sender, receiver) = async_channel::bounded(1);
+		let async_world = AsyncWorld::from_world(&mut app.world);
+
+		AsyncComputeTaskPool::get()
+			.spawn(async move {
+				let increase_counter_all = async_world.register_system(increase_counter_all).await;
+				let ica2 = increase_counter_all.clone();
+				increase_counter_all.unregister().await;
+
+				ica2.run().await;
+
+				let id = *ica2.id;
+				ica2.unregister().await;
+				sender.send(id).await.unwrap();
+			})
+			.detach();
+
+		let system_id = loop {
+			match receiver.try_recv() {
+				Ok(id) => break id,
+				Err(_) => app.update(),
+			}
+		};
+		app.update();
+
+		let err = app.world.remove_system(system_id);
+		assert_counter!(id, 1, &app.world);
+		assert!(matches!(
+			err,
+			Err(RegisteredSystemError::SystemIdNotRegistered(_))
+		));
+	}
+
+	#[test]
 	fn io() {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
@@ -217,5 +299,51 @@ mod tests {
 
 		assert_eq!(5, value);
 		assert_counter!(id, 5, &app.world);
+	}
+
+	#[test]
+	fn io_unregister() {
+		let mut app = App::new();
+		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
+		let id = app.world.spawn(Counter(4)).id();
+		assert_counter!(id, 4, &app.world);
+
+		let (sender, receiver) = async_channel::bounded(1);
+		let async_world = AsyncWorld::from_world(&mut app.world);
+
+		AsyncComputeTaskPool::get()
+			.spawn(async move {
+				let increase_counter = async_world
+					.register_io_system::<Entity, (), _>(increase_counter)
+					.await;
+				let get_counter_value = async_world
+					.register_io_system::<Entity, u8, _>(get_counter_value)
+					.await;
+
+				let gcv2 = get_counter_value.clone();
+				get_counter_value.unregister().await;
+
+				increase_counter.run(id).await;
+				let value = gcv2.run(id).await;
+				sender.send((value, *gcv2.id)).await.unwrap();
+				gcv2.unregister().await;
+			})
+			.detach();
+
+		let (value, system_id) = loop {
+			match receiver.try_recv() {
+				Ok(value) => break value,
+				Err(_) => app.update(),
+			}
+		};
+		app.update();
+
+		let err = app.world.remove_system(system_id);
+		assert_eq!(5, value);
+		assert_counter!(id, 5, &app.world);
+		assert!(matches!(
+			err,
+			Err(RegisteredSystemError::SystemIdNotRegistered(_))
+		));
 	}
 }
