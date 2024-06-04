@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-async-ecs"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "async-channel",
  "async-lock",

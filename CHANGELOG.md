@@ -1,3 +1,11 @@
+# 0.5.1
+
+- Added `AsyncSystem::unregister()` and `AsyncIOSystem::unregister()`
+
+# 0.5.0
+
+- Updated for bevy 0.13
+
 # 0.4.1
 
 - `impl Clone` for `AsyncSystem` and `AsyncIOSystem`

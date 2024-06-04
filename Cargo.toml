@@ -1,6 +1,6 @@
 [package]
 name = "bevy-async-ecs"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Mark Old <dlom234@gmail.com>"]
 edition = "2021"
 license = "MIT"
