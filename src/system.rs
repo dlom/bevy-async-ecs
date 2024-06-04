@@ -1,3 +1,4 @@
+use crate::util::remove_system;
 use crate::world::AsyncWorld;
 use crate::{die, recv_and_yield};
 use bevy_ecs::prelude::*;
@@ -54,11 +55,7 @@ impl AsyncSystem {
 	pub async fn unregister(self) {
 		let Self { id, world } = self;
 		if let Some(id) = Arc::into_inner(id) {
-			world
-				.apply(move |world: &mut World| {
-					world.remove_system(id).unwrap_or_else(die);
-				})
-				.await;
+			world.apply(remove_system(id)).await;
 		}
 	}
 }
@@ -148,11 +145,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 	pub async fn unregister(self) {
 		let Self { id, world, _pd } = self;
 		if let Some(id) = Arc::into_inner(id) {
-			world
-				.apply(move |world: &mut World| {
-					world.remove_system(id).unwrap_or_else(die);
-				})
-				.await
+			world.apply(remove_system(id)).await
 		}
 	}
 }
