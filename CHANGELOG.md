@@ -1,3 +1,7 @@
+# 0.6.0
+
+- Updated for bevy 0.14
+
 # 0.5.1
 
 - Added `AsyncSystem::unregister()` and `AsyncIOSystem::unregister()`

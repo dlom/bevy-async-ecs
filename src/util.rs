@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::{Command, SystemId};
+use bevy_ecs::system::SystemId;
+use bevy_ecs::world::Command;
 
 pub(crate) fn insert<B: Bundle>(id: Entity, bundle: B) -> impl Command {
 	move |world: &mut World| {

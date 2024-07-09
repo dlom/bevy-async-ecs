@@ -5,7 +5,7 @@ use crate::world::AsyncWorld;
 use crate::{die, recv_and_yield};
 use async_channel::{Receiver, Sender};
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::Command;
+use bevy_ecs::world::Command;
 use bevy_hierarchy::DespawnRecursive;
 use std::fmt;
 
@@ -154,7 +154,7 @@ mod tests {
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -170,7 +170,7 @@ mod tests {
 			}
 		};
 
-		assert!(app.world.get_entity(id).is_some());
+		assert!(app.world().get_entity(id).is_some());
 	}
 
 	#[test]
@@ -179,7 +179,7 @@ mod tests {
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -195,7 +195,7 @@ mod tests {
 			}
 		};
 
-		let name = app.world.entity(id).get::<Name>().unwrap();
+		let name = app.world().entity(id).get::<Name>().unwrap();
 		assert_eq!("lol", name.as_str());
 	}
 
@@ -205,8 +205,8 @@ mod tests {
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
-		let id = app.world.spawn_empty().id();
+		let async_world = AsyncWorld::from_world(app.world_mut());
+		let id = app.world_mut().spawn_empty().id();
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -223,7 +223,7 @@ mod tests {
 			}
 		}
 
-		assert!(app.world.get_entity(id).is_none());
+		assert!(app.world().get_entity(id).is_none());
 	}
 
 	#[test]
@@ -232,7 +232,7 @@ mod tests {
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -253,10 +253,10 @@ mod tests {
 			}
 		};
 
-		let translation = app.world.get::<Translation>(id).unwrap();
+		let translation = app.world().get::<Translation>(id).unwrap();
 		assert_eq!(2, translation.0);
 		assert_eq!(3, translation.1);
-		let scale = app.world.get::<Scale>(id).unwrap();
+		let scale = app.world().get::<Scale>(id).unwrap();
 		assert_eq!(1, scale.0);
 		assert_eq!(1, scale.1);
 	}
@@ -267,7 +267,7 @@ mod tests {
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -290,10 +290,10 @@ mod tests {
 		};
 		app.update();
 
-		let translation = app.world.get::<Translation>(id).unwrap();
+		let translation = app.world().get::<Translation>(id).unwrap();
 		assert_eq!(2, translation.0);
 		assert_eq!(3, translation.1);
-		let scale = app.world.get::<Scale>(id).unwrap();
+		let scale = app.world().get::<Scale>(id).unwrap();
 		assert_eq!(1, scale.0);
 		assert_eq!(1, scale.1);
 	}
@@ -303,9 +303,9 @@ mod tests {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 		let id = app
-			.world
+			.world_mut()
 			.spawn(Transform {
 				translation: Translation(3, 4),
 				scale: Scale(1, 1),
@@ -319,8 +319,8 @@ mod tests {
 			.detach();
 		app.update();
 
-		assert!(app.world.get::<Translation>(id).is_none());
-		assert!(app.world.get::<Scale>(id).is_none());
+		assert!(app.world().get::<Translation>(id).is_none());
+		assert!(app.world().get::<Scale>(id).is_none());
 	}
 
 	#[test]
@@ -329,8 +329,8 @@ mod tests {
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
 		let (value_tx, value_rx) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
-		let id = app.world.spawn_empty().id();
+		let async_world = AsyncWorld::from_world(app.world_mut());
+		let id = app.world_mut().spawn_empty().id();
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -349,6 +349,6 @@ mod tests {
 
 		assert_eq!(6, value.0);
 		assert_eq!(7, value.1);
-		assert!(app.world.entity(id).get::<Scale>().is_none());
+		assert!(app.world().entity(id).get::<Scale>().is_none());
 	}
 }

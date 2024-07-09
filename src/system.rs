@@ -192,11 +192,11 @@ mod tests {
 	fn smoke() {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
-		let id = app.world.spawn(Counter(0)).id();
-		assert_counter!(id, 0, &app.world);
+		let id = app.world_mut().spawn(Counter(0)).id();
+		assert_counter!(id, 0, app.world_mut());
 
 		let (barrier_tx, barrier_rx) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -214,18 +214,18 @@ mod tests {
 		}
 		app.update();
 
-		assert_counter!(id, 1, &app.world);
+		assert_counter!(id, 1, app.world_mut());
 	}
 
 	#[test]
 	fn normal_unregister() {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
-		let id = app.world.spawn(Counter(0)).id();
-		assert_counter!(id, 0, &app.world);
+		let id = app.world_mut().spawn(Counter(0)).id();
+		assert_counter!(id, 0, app.world_mut());
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -249,8 +249,8 @@ mod tests {
 		};
 		app.update();
 
-		let err = app.world.remove_system(system_id);
-		assert_counter!(id, 1, &app.world);
+		let err = app.world_mut().remove_system(system_id);
+		assert_counter!(id, 1, app.world_mut());
 		assert!(matches!(
 			err,
 			Err(RegisteredSystemError::SystemIdNotRegistered(_))
@@ -261,11 +261,11 @@ mod tests {
 	fn io() {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
-		let id = app.world.spawn(Counter(4)).id();
-		assert_counter!(id, 4, &app.world);
+		let id = app.world_mut().spawn(Counter(4)).id();
+		assert_counter!(id, 4, app.world_mut());
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -291,18 +291,18 @@ mod tests {
 		app.update();
 
 		assert_eq!(5, value);
-		assert_counter!(id, 5, &app.world);
+		assert_counter!(id, 5, app.world_mut());
 	}
 
 	#[test]
 	fn io_unregister() {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
-		let id = app.world.spawn(Counter(4)).id();
-		assert_counter!(id, 4, &app.world);
+		let id = app.world_mut().spawn(Counter(4)).id();
+		assert_counter!(id, 4, app.world_mut());
 
 		let (sender, receiver) = async_channel::bounded(1);
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
@@ -331,9 +331,9 @@ mod tests {
 		};
 		app.update();
 
-		let err = app.world.remove_system(system_id);
+		let err = app.world_mut().remove_system(system_id);
 		assert_eq!(5, value);
-		assert_counter!(id, 5, &app.world);
+		assert_counter!(id, 5, app.world_mut());
 		assert!(matches!(
 			err,
 			Err(RegisteredSystemError::SystemIdNotRegistered(_))
