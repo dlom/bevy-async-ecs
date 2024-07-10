@@ -268,6 +268,9 @@ mod tests {
 			app.world().get_resource::<ActiveWaiters>().unwrap().0.len(),
 			1
 		);
-		assert_eq!(app.world().get_resource::<WaiterCache>().unwrap().0.len(), 3);
+		assert_eq!(
+			app.world().get_resource::<WaiterCache>().unwrap().0.len(),
+			3
+		);
 	}
 }
