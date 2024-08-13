@@ -2,7 +2,8 @@ use crate::die;
 use async_channel::{Receiver, Sender, TrySendError};
 use bevy_core::Name;
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::{BoxedSystem, Command, IntoSystem, SystemId};
+use bevy_ecs::system::{BoxedSystem, IntoSystem, SystemId};
+use bevy_ecs::world::Command;
 use bevy_utils::{HashMap, HashSet};
 use std::any::TypeId;
 use std::marker::PhantomData;
@@ -227,46 +228,49 @@ mod tests {
 			.add_event::<MyEvent>()
 			.add_systems(Update, drive_waiting_for);
 
-		let id = app.world.spawn_empty().id();
+		let id = app.world_mut().spawn_empty().id();
 		let (start_waiting_for, name_rx) = StartWaitingFor::<Name>::component(id);
-		start_waiting_for.apply(&mut app.world);
+		start_waiting_for.apply(app.world_mut());
 		assert!(name_rx.try_recv().is_err());
 
 		app.update();
 		assert!(name_rx.try_recv().is_err());
 
-		app.world.entity_mut(id).insert(Name::new("Frank"));
+		app.world_mut().entity_mut(id).insert(Name::new("Frank"));
 		app.update();
 		assert_eq!(name_rx.try_recv().unwrap(), Name::new("Frank"));
 
-		let id = app.world.spawn(Name::new("Tim")).id();
+		let id = app.world_mut().spawn(Name::new("Tim")).id();
 		let (start_waiting_for, name_rx) = StartWaitingFor::<Name>::component(id);
-		start_waiting_for.apply(&mut app.world);
+		start_waiting_for.apply(app.world_mut());
 		assert_eq!(name_rx.try_recv().unwrap(), Name::new("Tim"));
 
 		app.update();
 
 		let (start_waiting_for, time_rx) = StartWaitingFor::<FrameCount>::resource();
-		start_waiting_for.apply(&mut app.world);
+		start_waiting_for.apply(app.world_mut());
 		assert_eq!(time_rx.try_recv().unwrap().0, 3);
 
 		app.update();
 
 		let (start_waiting_for, events_rx) = StartWaitingFor::<MyEvent>::events();
-		start_waiting_for.apply(&mut app.world);
+		start_waiting_for.apply(app.world_mut());
 		assert!(events_rx.try_recv().is_err());
 
-		app.world.send_event(MyEvent);
-		app.world.send_event(MyEvent);
+		app.world_mut().send_event(MyEvent);
+		app.world_mut().send_event(MyEvent);
 		app.update();
 		assert!(events_rx.try_recv().is_ok());
 		assert!(events_rx.try_recv().is_ok());
 		assert!(events_rx.try_recv().is_err());
 
 		assert_eq!(
-			app.world.get_resource::<ActiveWaiters>().unwrap().0.len(),
+			app.world().get_resource::<ActiveWaiters>().unwrap().0.len(),
 			1
 		);
-		assert_eq!(app.world.get_resource::<WaiterCache>().unwrap().0.len(), 3);
+		assert_eq!(
+			app.world().get_resource::<WaiterCache>().unwrap().0.len(),
+			3
+		);
 	}
 }

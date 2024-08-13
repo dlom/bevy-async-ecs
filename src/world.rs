@@ -7,7 +7,7 @@ use crate::{die, recv_and_yield, CowStr};
 use async_channel::Receiver;
 use bevy_core::Name;
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::Command;
+use bevy_ecs::world::Command;
 use std::fmt;
 
 /// Exposes asynchronous access to the Bevy ECS `World`.

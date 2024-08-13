@@ -1,7 +1,7 @@
 use crate::die;
 use async_channel::{Receiver, Sender, TryRecvError};
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::{Command, CommandQueue};
+use bevy_ecs::world::{Command, CommandQueue};
 use bevy_utils::tracing::debug;
 use std::fmt;
 
@@ -195,7 +195,7 @@ mod tests {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 		let operation_sender = async_world.sender();
 		let (sender, receiver) = async_channel::bounded(1);
 		let command = BoxedCommand::new(move |world: &mut World| {
@@ -216,7 +216,7 @@ mod tests {
 		};
 		app.update();
 
-		assert!(app.world.entity(id).get::<Marker>().is_some());
+		assert!(app.world().entity(id).get::<Marker>().is_some());
 		assert_eq!("BoxedCommand", debugged);
 		let debugged = format!("{:?}", CommandQueueBuilder::new(operation_sender));
 		assert_eq!(
@@ -230,8 +230,8 @@ mod tests {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
-		let async_world = AsyncWorld::from_world(&mut app.world);
-		let id = app.world.spawn_empty().id();
+		let async_world = AsyncWorld::from_world(app.world_mut());
+		let id = app.world_mut().spawn_empty().id();
 		let (start_waiting_for, value_rx) = StartWaitingFor::<Counter>::component(id);
 
 		let fut = async move {
@@ -259,7 +259,7 @@ mod tests {
 		let mut app = App::new();
 		app.add_plugins((MinimalPlugins, AsyncEcsPlugin));
 
-		let async_world = AsyncWorld::from_world(&mut app.world);
+		let async_world = AsyncWorld::from_world(app.world_mut());
 		let sender = async_world.sender();
 		let entity = AsyncEntity::new(Entity::PLACEHOLDER, async_world.clone());
 		let other_sender = entity.sender();
