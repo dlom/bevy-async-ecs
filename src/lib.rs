@@ -16,7 +16,6 @@ use crate::wait_for::{drive_waiting_for, initialize_waiters};
 use async_channel::Receiver;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use futures_lite::{future, pin};
 
 pub use command::{BoxedCommand, CommandQueueBuilder, CommandQueueSender};
 pub use entity::{AsyncComponent, AsyncEntity};
@@ -32,16 +31,8 @@ fn die<T, E: std::fmt::Debug>(e: E) -> T {
 	panic!("invariant broken: {:?}", e)
 }
 
-async fn recv_and_yield<T: Send>(receiver: Receiver<T>) -> T {
-	let recv_fut = receiver.recv();
-	pin!(recv_fut);
-	loop {
-		if let Some(value) = future::poll_once(recv_fut.as_mut()).await {
-			return value.unwrap_or_else(die);
-		} else {
-			future::yield_now().await;
-		}
-	}
+async fn recv<T: Send>(receiver: Receiver<T>) -> T {
+	receiver.recv().await.unwrap_or_else(die)
 }
 
 /// Adds asynchronous ECS operations to Bevy `App`s.
@@ -61,26 +52,21 @@ impl Plugin for AsyncEcsPlugin {
 
 #[cfg(test)]
 mod tests {
-	use crate::recv_and_yield;
-	use futures_lite::{future, pin};
+	use crate::recv;
+	use pollster::block_on;
 
 	#[test]
 	#[should_panic(expected = "invariant broken: RecvError")]
 	fn die() {
-		let (rx, tx) = async_channel::bounded::<()>(1);
-		rx.close();
-		future::block_on(recv_and_yield(tx));
+		let (tx, rx) = async_channel::bounded::<()>(1);
+		tx.close();
+		block_on(recv(rx));
 	}
 
 	#[test]
 	fn no_die() {
 		let (tx, rx) = async_channel::bounded::<u8>(1);
-		let fut = recv_and_yield(rx);
-		pin!(fut);
-		assert!(future::block_on(future::poll_once(&mut fut)).is_none());
-		assert!(future::block_on(future::poll_once(&mut fut)).is_none());
-		assert!(future::block_on(future::poll_once(&mut fut)).is_none());
 		tx.try_send(3).unwrap();
-		assert_eq!(3, future::block_on(fut));
+		assert_eq!(3, block_on(recv(rx)));
 	}
 }

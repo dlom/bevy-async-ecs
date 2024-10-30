@@ -2,7 +2,7 @@ use crate::command::CommandQueueSender;
 use crate::util::{insert, remove};
 use crate::wait_for::StartWaitingFor;
 use crate::world::AsyncWorld;
-use crate::{die, recv_and_yield};
+use crate::{die, recv};
 use async_channel::{Receiver, Sender};
 use bevy_ecs::prelude::*;
 use bevy_ecs::world::Command;
@@ -100,7 +100,7 @@ impl<C: Component> fmt::Debug for AsyncComponent<C> {
 impl<C: Component> AsyncComponent<C> {
 	/// Wait for the `Component` to exist, and retrieve its value.
 	pub async fn wait(self) -> C {
-		recv_and_yield(self.0).await
+		recv(self.0).await
 	}
 }
 

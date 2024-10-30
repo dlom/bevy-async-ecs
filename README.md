@@ -61,11 +61,25 @@ fn main() {
 }
 ```
 
+## Wasm Support
+
+`bevy-async-ecs` fully supports running in a web environment. Run the examples in your browser:
+
+```shell
+# One-time setup
+rustup target install wasm32-unknown-unknown
+cargo install wasm-server-runner
+
+# Run examples
+CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-server-runner cargo run --target wasm32-unknown-unknown --example end_to_end
+```
+
 ## Multithreaded
 
-`bevy-async-ecs` does not explicitly require the `multi-threaded` feature (though all the tests and examples do).
-However, when the task executor is running on a single thread (on wasm, for example), the async world will probably
-deadlock. If this is a pain-point for you, please open a GitHub issue.
+`bevy-async-ecs` does not explicitly require the `multi-threaded` feature (though all the tests and non-browser examples do).
+However, due to its asynchronous nature, this library inherently requires a multithreaded environment. In a web environment,
+the browser provides this for us. On native platforms, the `multi-threaded` feature will likely have to be enabled to prevent the
+app from deadlocking.
 
 ## Most recently compatible versions
 

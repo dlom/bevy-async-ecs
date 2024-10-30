@@ -3,7 +3,7 @@ use crate::entity::{AsyncEntity, SpawnAndSendId};
 use crate::system::{AsyncIOSystem, AsyncSystem};
 use crate::util::{insert_resource, remove_resource};
 use crate::wait_for::StartWaitingFor;
-use crate::{die, recv_and_yield, CowStr};
+use crate::{die, recv, CowStr};
 use async_channel::Receiver;
 use bevy_core::Name;
 use bevy_ecs::prelude::*;
@@ -75,7 +75,7 @@ impl AsyncWorld {
 	pub async fn spawn_empty(&self) -> AsyncEntity {
 		let (command, receiver) = SpawnAndSendId::new_empty();
 		self.apply(command).await;
-		let id = recv_and_yield(receiver).await;
+		let id = recv(receiver).await;
 		AsyncEntity::new(id, self.clone())
 	}
 
@@ -84,7 +84,7 @@ impl AsyncWorld {
 	pub async fn spawn<B: Bundle>(&self, bundle: B) -> AsyncEntity {
 		let (command, receiver) = SpawnAndSendId::new(bundle);
 		self.apply(command).await;
-		let id = recv_and_yield(receiver).await;
+		let id = recv(receiver).await;
 		AsyncEntity::new(id, self.clone())
 	}
 
@@ -180,7 +180,7 @@ impl<R: Resource> fmt::Debug for AsyncResource<R> {
 impl<R: Resource> AsyncResource<R> {
 	/// Wait for the `Resource` to exist, and retrieve its value.
 	pub async fn wait(self) -> R {
-		recv_and_yield(self.0).await
+		recv(self.0).await
 	}
 }
 
@@ -207,9 +207,9 @@ impl<E: Event> fmt::Debug for AsyncEvents<E> {
 }
 
 impl<E: Event> AsyncEvents<E> {
-	/// Wait for the an `Event` to be received from the vanilla Bevy world. This function can be called repeatedly
+	/// Wait for an `Event` to be received from the vanilla Bevy world. This function can be called repeatedly
 	/// to get more events as they are received.
 	pub async fn wait(&self) -> E {
-		recv_and_yield(self.0.clone()).await
+		recv(self.0.clone()).await
 	}
 }

@@ -1,6 +1,6 @@
 use crate::util::remove_system;
 use crate::world::AsyncWorld;
-use crate::{die, recv_and_yield};
+use crate::{die, recv};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, SystemId};
 use std::any::Any;
@@ -32,7 +32,7 @@ impl AsyncSystem {
 				id_tx.try_send(id).unwrap_or_else(die);
 			})
 			.await;
-		let id = recv_and_yield(id_rx).await;
+		let id = recv(id_rx).await;
 		let id = Arc::new(id);
 		Self { id, world }
 	}
@@ -105,7 +105,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 			})
 			.await;
 
-		let id = recv_and_yield(id_rx).await;
+		let id = recv(id_rx).await;
 		let id = Arc::new(id);
 
 		Self {
@@ -132,7 +132,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 			})
 			.await;
 
-		let boxed: BoxedAnySend = recv_and_yield(output_rx).await;
+		let boxed: BoxedAnySend = recv(output_rx).await;
 		let concrete = boxed.downcast().unwrap_or_else(die);
 		*concrete
 	}
