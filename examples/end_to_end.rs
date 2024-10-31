@@ -12,9 +12,11 @@ fn main() {
 				info!("started");
 				let key_waiter = KeyWaiter::new(&async_world).await;
 				info!("press the space bar...");
+				let mut i = 0;
 				loop {
 					key_waiter.wait_for(KeyCode::Space).await;
-					info!("you pressed the space bar!");
+					i = i + 1;
+					info!("you pressed the space bar! ({} times)", i);
 				}
 			};
 			AsyncComputeTaskPool::get().spawn(fut).detach();

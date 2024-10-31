@@ -133,7 +133,7 @@ fn process_waiting_components<C: Component + Clone>(
 	components: Query<&C>,
 ) {
 	if query.is_empty() {
-		commands.add(StopWaitingFor::<C>::default());
+		commands.queue(StopWaitingFor::<C>::default());
 		return;
 	}
 
@@ -154,7 +154,7 @@ fn process_waiting_resources<R: Resource + Clone>(
 	resource: Option<Res<R>>,
 ) {
 	if query.is_empty() {
-		commands.add(StopWaitingFor::<R>::default());
+		commands.queue(StopWaitingFor::<R>::default());
 		return;
 	}
 
@@ -175,7 +175,7 @@ fn process_waiting_events<E: Event + Clone>(
 	mut event_reader: EventReader<E>,
 ) {
 	if query.is_empty() {
-		commands.add(StopWaitingFor::<E>::default());
+		commands.queue(StopWaitingFor::<E>::default());
 		return;
 	}
 

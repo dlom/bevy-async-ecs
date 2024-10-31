@@ -60,6 +60,6 @@ fn main() {
 		.add_plugins((DefaultPlugins, AsyncEcsPlugin))
 		.add_systems(Startup, init_async_world)
 		.add_systems(Update, spawn_entity_via_async)
-		.add_systems(Update, print_names.run_if(on_event::<EntitySpawned>()))
+		.add_systems(Update, print_names.run_if(on_event::<EntitySpawned>))
 		.run();
 }
