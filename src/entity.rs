@@ -38,7 +38,12 @@ impl AsyncEntity {
 
 	/// Recursively despawns the represented entity.
 	pub async fn despawn(self) {
-		self.world.apply(DespawnRecursive { entity: self.id }).await;
+		self.world
+			.apply(DespawnRecursive {
+				entity: self.id,
+				warn: false,
+			})
+			.await;
 	}
 
 	/// Adds a `Bundle` of components to the entity. This will overwrite any previous value(s) of
@@ -170,7 +175,7 @@ mod tests {
 			}
 		};
 
-		assert!(app.world().get_entity(id).is_some());
+		assert!(app.world().get_entity(id).is_ok());
 	}
 
 	#[test]
@@ -223,7 +228,7 @@ mod tests {
 			}
 		}
 
-		assert!(app.world().get_entity(id).is_none());
+		assert!(app.world().get_entity(id).is_err());
 	}
 
 	#[test]
