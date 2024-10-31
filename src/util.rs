@@ -26,8 +26,10 @@ pub(crate) fn remove_resource<R: Resource>() -> impl Command {
 	}
 }
 
-pub(crate) fn remove_system<I: 'static, O: 'static>(system_id: SystemId<I, O>) -> impl Command {
+pub(crate) fn remove_system<I: SystemInput + 'static, O: 'static>(
+	system_id: SystemId<I, O>,
+) -> impl Command {
 	move |world: &mut World| {
-		world.remove_system(system_id).ok();
+		let _ = world.unregister_system(system_id);
 	}
 }

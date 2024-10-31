@@ -59,7 +59,7 @@ impl AsyncWorld {
 	/// while supplying an input value and receiving an output value.
 	pub async fn register_io_system<I: Send + 'static, O: Send + 'static, M>(
 		&self,
-		system: impl IntoSystem<I, O, M> + Send,
+		system: impl IntoSystem<In<I>, O, M> + Send,
 	) -> AsyncIOSystem<I, O> {
 		AsyncIOSystem::new(system, self.clone()).await
 	}
