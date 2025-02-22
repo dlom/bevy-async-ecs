@@ -6,7 +6,9 @@ use crate::wait_for::StartWaitingFor;
 use crate::{die, recv, CowStr};
 use async_channel::Receiver;
 use bevy_core::Name;
+use bevy_ecs::observer::{TriggerEvent, TriggerTargets};
 use bevy_ecs::prelude::*;
+use bevy_ecs::system::RunSystemOnce;
 use bevy_ecs::world::Command;
 use std::fmt;
 
@@ -40,10 +42,15 @@ impl AsyncWorld {
 	pub async fn apply<C: Command>(&self, command: C) {
 		self.0.send_single(BoxedCommand::new(command)).await
 	}
-
+	
 	/// Starts building a `CommandQueue`.
 	pub fn start_queue(&self) -> CommandQueueBuilder {
 		CommandQueueBuilder::new(self.sender())
+	}
+
+	/// Run a [`System`] once.
+	pub async fn run_system<M>(self, system: impl IntoSystem<(), (), M> + Send + 'static) {
+		self.apply(|world: &mut World| { _ = world.run_system_once(system); }).await
 	}
 
 	/// Registers a `System` and returns an `AsyncSystem` that can be used to run the system on demand.
@@ -146,6 +153,16 @@ impl AsyncWorld {
 	/// `AsyncWorld::start_waiting_for_events().await.wait().await`.
 	pub async fn wait_for_event<E: Event + Clone>(&self) -> E {
 		self.start_waiting_for_events().await.wait().await
+	}
+
+	/// Triggers the given [`Event`], which will run any [`Observer`]s watching for it.
+	pub async fn trigger<E: Event>(&self, event: E) {
+		self.apply(TriggerEvent { event, targets: () }).await;
+	}
+
+	/// Triggers the given [`Event`] for the given `targets`, which will run any [`Observer`]s watching for it.
+	pub async fn trigger_targets<E: Event, T: TriggerTargets + Send + Sync + 'static>(&self, event: E, targets: T) {
+		self.apply(TriggerEvent { event, targets }).await;
 	}
 }
 
