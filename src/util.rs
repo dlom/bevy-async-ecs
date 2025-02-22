@@ -1,3 +1,4 @@
+use bevy_ecs::observer::TriggerTargets;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemId;
 
@@ -36,5 +37,14 @@ pub(crate) fn remove_system<I: SystemInput + 'static, O: 'static>(
 ) -> impl Command {
 	move |world: &mut World| {
 		let _ = world.unregister_system(system_id);
+	}
+}
+
+pub(crate) fn trigger_targets<E: Event, T: TriggerTargets + Send + Sync + 'static>(
+	event: E,
+	targets: T,
+) -> impl Command {
+	move |world: &mut World| {
+		world.trigger_targets(event, targets);
 	}
 }
