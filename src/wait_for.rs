@@ -1,10 +1,8 @@
 use crate::die;
 use async_channel::{Receiver, Sender, TrySendError};
-use bevy_core::Name;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, IntoSystem, SystemId};
-use bevy_ecs::world::Command;
-use bevy_utils::{HashMap, HashSet};
+use bevy_platform_support::collections::{HashMap, HashSet};
 use std::any::TypeId;
 use std::marker::PhantomData;
 
@@ -213,8 +211,8 @@ pub(crate) fn initialize_waiters(mut commands: Commands) {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use bevy::diagnostic::FrameCount;
 	use bevy::prelude::*;
-	use bevy_core::FrameCount;
 
 	#[derive(Clone, Event)]
 	struct MyEvent;

@@ -44,9 +44,9 @@ impl Plugin for AsyncEcsPlugin {
 		app.add_systems(PreStartup, (initialize_command_queue, initialize_waiters))
 			.add_systems(
 				Last,
-				(receive_commands, apply_commands, apply_deferred).chain(),
+				(receive_commands, apply_commands, ApplyDeferred).chain(),
 			)
-			.add_systems(PostUpdate, (drive_waiting_for, apply_deferred).chain());
+			.add_systems(PostUpdate, (drive_waiting_for, ApplyDeferred).chain());
 	}
 }
 

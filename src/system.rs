@@ -3,9 +3,9 @@ use crate::world::AsyncWorld;
 use crate::{die, recv};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, SystemId};
+use bevy_platform_support::sync::Arc;
 use std::any::Any;
 use std::marker::PhantomData;
-use std::sync::Arc;
 
 type BoxedAnySend = Box<dyn Any + Send>;
 type SystemIdWithIO = SystemId<In<BoxedAnySend>, BoxedAnySend>;
@@ -131,7 +131,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 		self.world
 			.apply(move |world: &mut World| {
 				let input = input_rx.try_recv().unwrap_or_else(die);
-				let output = world.run_system_with_input(id, input).unwrap_or_else(die);
+				let output = world.run_system_with(id, input).unwrap_or_else(die);
 				output_tx.try_send(output).unwrap_or_else(die);
 			})
 			.await;

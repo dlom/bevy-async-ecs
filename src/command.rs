@@ -1,8 +1,8 @@
 use crate::die;
 use async_channel::{Receiver, Sender, TryRecvError};
 use bevy_ecs::prelude::*;
-use bevy_ecs::world::{Command, CommandQueue};
-use bevy_utils::tracing::debug;
+use bevy_ecs::world::CommandQueue;
+use bevy_log::tracing::debug;
 use std::fmt;
 
 /// The object-safe equivalent of a `Box<dyn Command>`.
@@ -37,7 +37,7 @@ impl Command for BoxedCommand {
 	}
 }
 
-/// Builds a `CommandQueue` that can by applied to the world that the builder was
+/// Builds a `CommandQueue` that can be applied to the world that the builder was
 /// constructed from.
 ///
 /// The easiest way to get a `CommandQueueBuilder` is with `AsyncWorld::start_queue()`

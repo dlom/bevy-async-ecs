@@ -1,10 +1,10 @@
+use bevy::platform_support::sync::OnceLock;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use bevy_async_ecs::*;
-use rand::distributions::{Alphanumeric, Distribution};
+use rand::distr::{Alphanumeric, Distribution};
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
-use std::sync::OnceLock;
 
 // Setting up the global AsyncWorld
 
@@ -31,7 +31,7 @@ fn spawn_entity_via_async(input: Res<ButtonInput<KeyCode>>) {
 	if input.just_pressed(KeyCode::Space) {
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
-				let mut rng = SmallRng::from_entropy();
+				let mut rng = SmallRng::from_os_rng();
 				let name: String = Alphanumeric
 					.sample_iter(&mut rng)
 					.take(7)

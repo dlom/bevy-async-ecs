@@ -1,6 +1,5 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemId;
-use bevy_ecs::world::Command;
 
 pub(crate) fn insert<B: Bundle>(id: Entity, bundle: B) -> impl Command {
 	move |world: &mut World| {
@@ -11,6 +10,12 @@ pub(crate) fn insert<B: Bundle>(id: Entity, bundle: B) -> impl Command {
 pub(crate) fn remove<B: Bundle>(id: Entity) -> impl Command {
 	move |world: &mut World| {
 		world.entity_mut(id).remove::<B>();
+	}
+}
+
+pub(crate) fn despawn(id: Entity) -> impl Command {
+	move |world: &mut World| {
+		world.despawn(id);
 	}
 }
 

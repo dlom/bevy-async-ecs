@@ -5,9 +5,7 @@ use crate::util::{insert_resource, remove_resource};
 use crate::wait_for::StartWaitingFor;
 use crate::{die, recv, CowStr};
 use async_channel::Receiver;
-use bevy_core::Name;
 use bevy_ecs::prelude::*;
-use bevy_ecs::world::Command;
 use std::fmt;
 
 /// Exposes asynchronous access to the Bevy ECS `World`.
