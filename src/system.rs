@@ -3,7 +3,7 @@ use crate::world::AsyncWorld;
 use crate::{die, recv};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, SystemId};
-use bevy_platform_support::sync::Arc;
+use bevy_platform::sync::Arc;
 use std::any::Any;
 use std::marker::PhantomData;
 

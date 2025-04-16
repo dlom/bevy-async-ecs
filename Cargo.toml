@@ -10,13 +10,13 @@ keywords = ["bevy", "ecs", "async", "game"]
 categories = ["game-engines", "asynchronous"]
 
 [dependencies]
-bevy_app = { version = "0.16.0-rc.3", default-features = false }
-bevy_log = { version = "0.16.0-rc.3", default-features = false }
-bevy_platform_support = { version = "0.16.0-rc.3", default-features = false }
-bevy_ecs = { version = "0.16.0-rc.3", default-features = false }
+bevy_app = { version = "0.16.0-rc.5", default-features = false }
+bevy_log = { version = "0.16.0-rc.5", default-features = false }
+bevy_platform = { version = "0.16.0-rc.5", default-features = false }
+bevy_ecs = { version = "0.16.0-rc.5", default-features = false }
 async-channel = "2"
 
 [dev-dependencies]
 pollster = "0.4"
-rand = { version = "0.9", default-features = false, features = ["small_rng", "os_rng"] }
-bevy = "0.16.0-rc.3"
+rand = { version = "0.8", default-features = false, features = ["small_rng", "getrandom"] }
+bevy = "0.16.0-rc.5"

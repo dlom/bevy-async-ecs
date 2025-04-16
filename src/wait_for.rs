@@ -2,7 +2,7 @@ use crate::die;
 use async_channel::{Receiver, Sender, TrySendError};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::{BoxedSystem, IntoSystem, SystemId};
-use bevy_platform_support::collections::{HashMap, HashSet};
+use bevy_platform::collections::{HashMap, HashSet};
 use std::any::TypeId;
 use std::marker::PhantomData;
 
