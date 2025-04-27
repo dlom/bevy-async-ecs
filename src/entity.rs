@@ -3,7 +3,7 @@ use crate::util::{despawn, insert, remove};
 use crate::wait_for::StartWaitingFor;
 use crate::world::AsyncWorld;
 use crate::{die, recv};
-use async_channel::{Receiver, Sender};
+use async_channel::{Receiver, Sender, TrySendError};
 use bevy_ecs::prelude::*;
 use std::fmt;
 
@@ -124,7 +124,9 @@ impl<B: Bundle> SpawnAndSendId<B> {
 impl<B: Bundle> Command for SpawnAndSendId<B> {
 	fn apply(self, world: &mut World) {
 		let id = world.spawn(self.bundle).id();
-		self.sender.try_send(id).unwrap_or_else(die);
+		if let Err(e @ TrySendError::Full(_)) = self.sender.try_send(id) {
+			let _: () = die(e);
+		}
 	}
 }
 
