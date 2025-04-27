@@ -1,3 +1,10 @@
+# 0.8.1
+
+- Added `AsyncWorld::run_system()`
+- Added `AsyncWorld::trigger()`
+- Added `AsyncWorld::trigger_targets()`
+- Bug fixes (#11)
+
 # 0.8.0
 
 - Updated for bevy 0.16
