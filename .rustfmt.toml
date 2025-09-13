@@ -1,2 +1,2 @@
 hard_tabs = true
-imports_granularity = "Module"
+imports_granularity = "Item"

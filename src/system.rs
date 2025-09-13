@@ -1,8 +1,10 @@
+use crate::die;
+use crate::recv;
 use crate::util::remove_system;
 use crate::world::AsyncWorld;
-use crate::{die, recv};
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::{BoxedSystem, SystemId};
+use bevy_ecs::system::BoxedSystem;
+use bevy_ecs::system::SystemId;
 use bevy_platform::sync::Arc;
 use std::any::Any;
 use std::marker::PhantomData;
@@ -156,8 +158,8 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 
 #[cfg(test)]
 mod tests {
-	use crate::world::AsyncWorld;
 	use crate::AsyncEcsPlugin;
+	use crate::world::AsyncWorld;
 	use bevy::ecs::system::RegisteredSystemError;
 	use bevy::prelude::*;
 	use bevy::tasks::AsyncComputeTaskPool;

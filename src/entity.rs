@@ -1,9 +1,14 @@
 use crate::command::CommandQueueSender;
-use crate::util::{despawn, insert, remove};
+use crate::die;
+use crate::recv;
+use crate::util::despawn;
+use crate::util::insert;
+use crate::util::remove;
 use crate::wait_for::StartWaitingFor;
 use crate::world::AsyncWorld;
-use crate::{die, recv};
-use async_channel::{Receiver, Sender, TrySendError};
+use async_channel::Receiver;
+use async_channel::Sender;
+use async_channel::TrySendError;
 use bevy_ecs::prelude::*;
 use std::fmt;
 
@@ -132,7 +137,8 @@ impl<B: Bundle> Command for SpawnAndSendId<B> {
 
 #[cfg(test)]
 mod tests {
-	use crate::{AsyncEcsPlugin, AsyncWorld};
+	use crate::AsyncEcsPlugin;
+	use crate::AsyncWorld;
 	use bevy::prelude::*;
 	use bevy::tasks::AsyncComputeTaskPool;
 

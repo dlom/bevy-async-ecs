@@ -11,16 +11,25 @@ mod util;
 mod wait_for;
 mod world;
 
-use crate::command::{apply_commands, initialize_command_queue, receive_commands};
-use crate::wait_for::{drive_waiting_for, initialize_waiters};
+use crate::command::apply_commands;
+use crate::command::initialize_command_queue;
+use crate::command::receive_commands;
+use crate::wait_for::drive_waiting_for;
+use crate::wait_for::initialize_waiters;
 use async_channel::Receiver;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 
-pub use command::{BoxedCommand, CommandQueueBuilder, CommandQueueSender};
-pub use entity::{AsyncComponent, AsyncEntity};
-pub use system::{AsyncIOSystem, AsyncSystem};
-pub use world::{AsyncMessages, AsyncResource, AsyncWorld};
+pub use command::BoxedCommand;
+pub use command::CommandQueueBuilder;
+pub use command::CommandQueueSender;
+pub use entity::AsyncComponent;
+pub use entity::AsyncEntity;
+pub use system::AsyncIOSystem;
+pub use system::AsyncSystem;
+pub use world::AsyncMessages;
+pub use world::AsyncResource;
+pub use world::AsyncWorld;
 
 type CowStr = std::borrow::Cow<'static, str>;
 

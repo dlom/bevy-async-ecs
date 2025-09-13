@@ -1,9 +1,18 @@
-use crate::command::{BoxedCommand, CommandQueueBuilder, CommandQueueReceiver, CommandQueueSender};
-use crate::entity::{AsyncEntity, SpawnAndSendId};
-use crate::system::{AsyncIOSystem, AsyncSystem};
-use crate::util::{insert_resource, remove_resource, trigger_event};
+use crate::CowStr;
+use crate::command::BoxedCommand;
+use crate::command::CommandQueueBuilder;
+use crate::command::CommandQueueReceiver;
+use crate::command::CommandQueueSender;
+use crate::die;
+use crate::entity::AsyncEntity;
+use crate::entity::SpawnAndSendId;
+use crate::recv;
+use crate::system::AsyncIOSystem;
+use crate::system::AsyncSystem;
+use crate::util::insert_resource;
+use crate::util::remove_resource;
+use crate::util::trigger_event;
 use crate::wait_for::StartWaitingFor;
-use crate::{die, recv, CowStr};
 use async_channel::Receiver;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::RunSystemOnce;
@@ -156,7 +165,10 @@ impl AsyncWorld {
 	}
 
 	/// Triggers the given [`Event`], which will run any [`Observer`]s watching for it.
-	pub async fn trigger<'a, T: Default, E: Event<Trigger<'a> = T> + Send + Sync + 'static>(&self, event: E) {
+	pub async fn trigger<'a, T: Default, E: Event<Trigger<'a> = T> + Send + Sync + 'static>(
+		&self,
+		event: E,
+	) {
 		self.apply(trigger_event(event)).await;
 	}
 }

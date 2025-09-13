@@ -1,5 +1,7 @@
 use crate::die;
-use async_channel::{Receiver, Sender, TryRecvError};
+use async_channel::Receiver;
+use async_channel::Sender;
+use async_channel::TryRecvError;
 use bevy_ecs::prelude::*;
 use bevy_ecs::world::CommandQueue;
 use bevy_log::tracing::debug;
@@ -176,9 +178,11 @@ pub(crate) fn apply_commands(world: &mut World) {
 
 #[cfg(test)]
 mod tests {
+	use crate::AsyncEcsPlugin;
+	use crate::AsyncEntity;
+	use crate::AsyncWorld;
 	use crate::util::insert;
 	use crate::wait_for::StartWaitingFor;
-	use crate::{AsyncEcsPlugin, AsyncEntity, AsyncWorld};
 	use bevy::prelude::*;
 	use bevy::tasks::AsyncComputeTaskPool;
 
