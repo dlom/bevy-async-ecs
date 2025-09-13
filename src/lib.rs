@@ -20,7 +20,7 @@ use bevy_ecs::prelude::*;
 pub use command::{BoxedCommand, CommandQueueBuilder, CommandQueueSender};
 pub use entity::{AsyncComponent, AsyncEntity};
 pub use system::{AsyncIOSystem, AsyncSystem};
-pub use world::{AsyncEvents, AsyncResource, AsyncWorld};
+pub use world::{AsyncMessages, AsyncResource, AsyncWorld};
 
 type CowStr = std::borrow::Cow<'static, str>;
 

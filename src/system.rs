@@ -98,7 +98,7 @@ impl<I: Send + 'static, O: Send + 'static> AsyncIOSystem<I, O> {
 			Box::new(output)
 		}
 
-		let system = unbox_input.pipe(system).pipe(box_output);
+		let system = unbox_input::<I>.pipe(system).pipe(box_output);
 		let system: BoxedSystemWithIO = Box::new(IntoSystem::into_system(system));
 
 		let (id_tx, id_rx) = async_channel::bounded(1);

@@ -55,19 +55,19 @@ impl<R: Resource + Clone> StartWaitingFor<R> {
 	}
 }
 
-impl<E: Event + Clone> StartWaitingFor<E> {
-	fn event_system() -> BoxedSystem {
-		let system = IntoSystem::into_system(process_waiting_events::<E>);
+impl<M: Message + Clone> StartWaitingFor<M> {
+	fn message_system() -> BoxedSystem {
+		let system = IntoSystem::into_system(process_waiting_messages::<M>);
 		Box::new(system)
 	}
 
-	pub(crate) fn events() -> (Self, Receiver<E>) {
+	pub(crate) fn messages() -> (Self, Receiver<M>) {
 		let (tx, rx) = async_channel::unbounded();
 		let command = Self {
 			tx,
 			target: None,
-			system: Self::event_system,
-			name: Name::new("WaitingFor(Events)"),
+			system: Self::message_system,
+			name: Name::new("WaitingFor(Messages)"),
 		};
 		(command, rx)
 	}
@@ -165,29 +165,29 @@ fn process_waiting_resources<R: Resource + Clone>(
 	}
 }
 
-fn process_waiting_events<E: Event + Clone>(
+fn process_waiting_messages<M: Message + Clone>(
 	mut commands: Commands,
-	query: Query<(Entity, &WaitingFor<E>)>,
-	mut event_reader: EventReader<E>,
+	query: Query<(Entity, &WaitingFor<M>)>,
+	mut message_reader: MessageReader<M>,
 ) {
 	if query.is_empty() {
-		commands.queue(StopWaitingFor::<E>::default());
+		commands.queue(StopWaitingFor::<M>::default());
 		return;
 	}
 
-	let events: Vec<&E> = event_reader.read().collect();
-	if events.is_empty() {
+	let messages: Vec<&M> = message_reader.read().collect();
+	if messages.is_empty() {
 		return;
 	}
 
 	for (id, waiting_for) in query.iter() {
-		'events: for &event in &events {
-			if let Err(e) = waiting_for.0.try_send(event.clone()) {
+		'messages: for &message in &messages {
+			if let Err(e) = waiting_for.0.try_send(message.clone()) {
 				match e {
 					e @ TrySendError::Full(_) => die(e),
 					TrySendError::Closed(_) => {
 						commands.entity(id).despawn();
-						break 'events;
+						break 'messages;
 					}
 				}
 			}
@@ -212,8 +212,8 @@ mod tests {
 	use bevy::diagnostic::FrameCount;
 	use bevy::prelude::*;
 
-	#[derive(Clone, Event)]
-	struct MyEvent;
+	#[derive(Clone, Message)]
+	struct MyMessage;
 
 	#[test]
 	fn smoke() {
@@ -221,7 +221,7 @@ mod tests {
 		app.add_plugins(MinimalPlugins)
 			.init_resource::<WaiterCache>()
 			.init_resource::<ActiveWaiters>()
-			.add_event::<MyEvent>()
+			.add_message::<MyMessage>()
 			.add_systems(Update, drive_waiting_for);
 
 		let id = app.world_mut().spawn_empty().id();
@@ -249,16 +249,16 @@ mod tests {
 
 		app.update();
 
-		let (start_waiting_for, events_rx) = StartWaitingFor::<MyEvent>::events();
+		let (start_waiting_for, messages_rx) = StartWaitingFor::<MyMessage>::messages();
 		start_waiting_for.apply(app.world_mut());
-		assert!(events_rx.try_recv().is_err());
+		assert!(messages_rx.try_recv().is_err());
 
-		app.world_mut().send_event(MyEvent);
-		app.world_mut().send_event(MyEvent);
+		app.world_mut().write_message(MyMessage);
+		app.world_mut().write_message(MyMessage);
 		app.update();
-		assert!(events_rx.try_recv().is_ok());
-		assert!(events_rx.try_recv().is_ok());
-		assert!(events_rx.try_recv().is_err());
+		assert!(messages_rx.try_recv().is_ok());
+		assert!(messages_rx.try_recv().is_ok());
+		assert!(messages_rx.try_recv().is_err());
 
 		assert_eq!(
 			app.world().get_resource::<ActiveWaiters>().unwrap().0.len(),

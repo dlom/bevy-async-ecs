@@ -2,7 +2,7 @@ use bevy::platform::sync::OnceLock;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use bevy_async_ecs::*;
-use rand::distributions::{Alphanumeric, Distribution};
+use rand::distr::{Alphanumeric, Distribution};
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
 
@@ -24,14 +24,14 @@ fn init_async_world(world: &mut World) {
 
 // Using the global AsyncWorld
 
-#[derive(Event)]
+#[derive(Message)]
 struct EntitySpawned;
 
 fn spawn_entity_via_async(input: Res<ButtonInput<KeyCode>>) {
 	if input.just_pressed(KeyCode::Space) {
 		AsyncComputeTaskPool::get()
 			.spawn(async move {
-				let mut rng = SmallRng::from_entropy();
+				let mut rng = SmallRng::from_os_rng();
 				let name: String = Alphanumeric
 					.sample_iter(&mut rng)
 					.take(7)
@@ -39,7 +39,7 @@ fn spawn_entity_via_async(input: Res<ButtonInput<KeyCode>>) {
 					.collect();
 
 				let _entity = async_world().spawn_named(name).await;
-				async_world().send_event(EntitySpawned).await;
+				async_world().send_message(EntitySpawned).await;
 			})
 			.detach();
 	}
@@ -56,10 +56,10 @@ fn print_names(query: Query<(Entity, &Name)>) {
 
 fn main() {
 	App::new()
-		.add_event::<EntitySpawned>()
+		.add_message::<EntitySpawned>()
 		.add_plugins((DefaultPlugins, AsyncEcsPlugin))
 		.add_systems(Startup, init_async_world)
 		.add_systems(Update, spawn_entity_via_async)
-		.add_systems(Update, print_names.run_if(on_event::<EntitySpawned>))
+		.add_systems(Update, print_names.run_if(on_message::<EntitySpawned>))
 		.run();
 }

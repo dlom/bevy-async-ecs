@@ -1,11 +1,10 @@
 use crate::command::{BoxedCommand, CommandQueueBuilder, CommandQueueReceiver, CommandQueueSender};
 use crate::entity::{AsyncEntity, SpawnAndSendId};
 use crate::system::{AsyncIOSystem, AsyncSystem};
-use crate::util::{insert_resource, remove_resource, trigger_targets};
+use crate::util::{insert_resource, remove_resource, trigger_event};
 use crate::wait_for::StartWaitingFor;
 use crate::{die, recv, CowStr};
 use async_channel::Receiver;
-use bevy_ecs::observer::TriggerTargets;
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::RunSystemOnce;
 use std::fmt;
@@ -132,42 +131,33 @@ impl AsyncWorld {
 		self.start_waiting_for_resource().await.wait().await
 	}
 
-	/// Send an `Event` to the bevy world.
-	pub async fn send_event<E: Event>(&self, event: E) {
-		self.apply(SendEvent(event)).await;
+	/// Send a `Message` to the bevy world.
+	pub async fn send_message<M: Message>(&self, message: M) {
+		self.apply(WriteMessage(message)).await;
 	}
 
-	/// Start listening for `Event`s coming from the main bevy world.
-	/// Returns an `AsyncEvents` which can be further waited to receive these events.
+	/// Start listening for `Message`s coming from the main bevy world.
+	/// Returns an `AsyncMessages` which can be further waited to receive these messages.
 	///
-	/// `AsyncWorld::wait_for_event().await` is equivalent to
-	/// `AsyncWorld::start_waiting_for_events().await.wait().await`.
-	pub async fn start_waiting_for_events<E: Event + Clone>(&self) -> AsyncEvents<E> {
-		let (start_waiting_for, rx) = StartWaitingFor::events();
+	/// `AsyncWorld::wait_for_message().await` is equivalent to
+	/// `AsyncWorld::start_waiting_for_messages().await.wait().await`.
+	pub async fn start_waiting_for_messages<M: Message + Clone>(&self) -> AsyncMessages<M> {
+		let (start_waiting_for, rx) = StartWaitingFor::messages();
 		self.apply(start_waiting_for).await;
-		AsyncEvents(rx)
+		AsyncMessages(rx)
 	}
 
-	/// Wait for the `Event` of a given type. Returns the value of the event, once it is received.
+	/// Wait for the `Message` of a given type. Returns the value of the message, once it is received.
 	///
-	/// `AsyncWorld::wait_for_event().await` is equivalent to
-	/// `AsyncWorld::start_waiting_for_events().await.wait().await`.
-	pub async fn wait_for_event<E: Event + Clone>(&self) -> E {
-		self.start_waiting_for_events().await.wait().await
+	/// `AsyncWorld::wait_for_message().await` is equivalent to
+	/// `AsyncWorld::start_waiting_for_messages().await.wait().await`.
+	pub async fn wait_for_message<M: Message + Clone>(&self) -> M {
+		self.start_waiting_for_messages().await.wait().await
 	}
 
 	/// Triggers the given [`Event`], which will run any [`Observer`]s watching for it.
-	pub async fn trigger<E: Event>(&self, event: E) {
-		self.trigger_targets(event, ()).await;
-	}
-
-	/// Triggers the given [`Event`] for the given `targets`, which will run any [`Observer`]s watching for it.
-	pub async fn trigger_targets<E: Event, T: TriggerTargets + Send + Sync + 'static>(
-		&self,
-		event: E,
-		targets: T,
-	) {
-		self.apply(trigger_targets(event, targets)).await;
+	pub async fn trigger<'a, T: Default, E: Event<Trigger<'a> = T> + Send + Sync + 'static>(&self, event: E) {
+		self.apply(trigger_event(event)).await;
 	}
 }
 
@@ -206,32 +196,32 @@ impl<R: Resource> AsyncResource<R> {
 	}
 }
 
-struct SendEvent<E: Event>(E);
+struct WriteMessage<M: Message>(M);
 
-impl<E: Event> Command for SendEvent<E> {
+impl<M: Message> Command for WriteMessage<M> {
 	fn apply(self, world: &mut World) {
 		world
-			.send_event(self.0)
-			.ok_or("failed to send event")
+			.write_message(self.0)
+			.ok_or("failed to write message")
 			.unwrap_or_else(die);
 	}
 }
 
-/// Represents Bevy `Event`s being received asynchronously
+/// Represents Bevy `Message`s being received asynchronously
 ///
-/// The easiest way to get an `AsyncEvents` is with `AsyncWorld::start_waiting_for_events()`.
-pub struct AsyncEvents<E: Event>(Receiver<E>);
+/// The easiest way to get an `AsyncMessages` is with `AsyncWorld::start_waiting_for_messages()`.
+pub struct AsyncMessages<M: Message>(Receiver<M>);
 
-impl<E: Event> fmt::Debug for AsyncEvents<E> {
+impl<M: Message> fmt::Debug for AsyncMessages<M> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "AsyncEvents(..)")
+		write!(f, "AsyncMessages(..)")
 	}
 }
 
-impl<E: Event> AsyncEvents<E> {
-	/// Wait for an `Event` to be received from the vanilla Bevy world. This function can be called repeatedly
-	/// to get more events as they are received.
-	pub async fn wait(&self) -> E {
+impl<M: Message> AsyncMessages<M> {
+	/// Wait for a `Message` to be received from the vanilla Bevy world. This function can be called repeatedly
+	/// to get more messages as they are received.
+	pub async fn wait(&self) -> M {
 		recv(self.0.clone()).await
 	}
 }
