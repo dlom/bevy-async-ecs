@@ -11,9 +11,7 @@ mod util;
 mod wait_for;
 mod world;
 
-use crate::command::apply_commands;
-use crate::command::initialize_command_queue;
-use crate::command::receive_commands;
+use crate::command::receive_and_apply_commands;
 use crate::wait_for::drive_waiting_for;
 use crate::wait_for::initialize_waiters;
 use async_channel::Receiver;
@@ -50,11 +48,8 @@ pub struct AsyncEcsPlugin;
 
 impl Plugin for AsyncEcsPlugin {
 	fn build(&self, app: &mut App) {
-		app.add_systems(PreStartup, (initialize_command_queue, initialize_waiters))
-			.add_systems(
-				Last,
-				(receive_commands, apply_commands, ApplyDeferred).chain(),
-			)
+		app.add_systems(PreStartup, initialize_waiters)
+			.add_systems(Last, (receive_and_apply_commands, ApplyDeferred).chain())
 			.add_systems(PostUpdate, (drive_waiting_for, ApplyDeferred).chain());
 	}
 }

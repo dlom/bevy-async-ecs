@@ -123,10 +123,10 @@ impl CommandQueueReceiver {
 		Self(receiver)
 	}
 
-	fn enqueue_into(&self, world_queue: &mut WorldCommandQueue) -> Result<(), ()> {
+	fn enqueue_into(&self, world_queue: &mut Vec<CommandQueue>) -> Result<(), ()> {
 		loop {
 			match self.0.try_recv() {
-				Ok(command_queue) => world_queue.0.push(command_queue),
+				Ok(command_queue) => world_queue.push(command_queue),
 				Err(TryRecvError::Closed) => break Err(()),
 				Err(TryRecvError::Empty) => break Ok(()),
 			}
@@ -134,45 +134,27 @@ impl CommandQueueReceiver {
 	}
 }
 
-#[derive(Resource)]
-pub(crate) struct WorldCommandQueue(Vec<CommandQueue>);
+pub(crate) fn receive_and_apply_commands(world: &mut World) {
+	let mut buffer = Vec::new();
+	let mut closed_receivers = Vec::new();
 
-impl WorldCommandQueue {
-	pub(crate) fn drain(&mut self) -> Vec<CommandQueue> {
-		self.0.drain(..).collect()
-	}
-}
-
-impl Default for WorldCommandQueue {
-	fn default() -> Self {
-		Self(Vec::with_capacity(16))
-	}
-}
-
-pub(crate) fn initialize_command_queue(mut commands: Commands) {
-	commands.init_resource::<WorldCommandQueue>();
-}
-
-pub(crate) fn receive_commands(
-	mut commands: Commands,
-	receivers: Query<(Entity, &CommandQueueReceiver)>,
-	mut queue: ResMut<WorldCommandQueue>,
-) {
-	for (id, receiver) in receivers.iter() {
-		if receiver.enqueue_into(&mut queue).is_err() {
-			commands.entity(id).despawn()
+	let mut query = world.query::<(Entity, &CommandQueueReceiver)>();
+	for (id, receiver) in query.iter(world) {
+		if receiver.enqueue_into(&mut buffer).is_err() {
+			closed_receivers.push(id);
 		}
 	}
-}
 
-pub(crate) fn apply_commands(world: &mut World) {
-	let commands = world.resource_mut::<WorldCommandQueue>().drain();
-	if !commands.is_empty() {
-		debug!("applying {} CommandQueues", commands.len());
+	if !buffer.is_empty() {
+		debug!("applying {} CommandQueues", buffer.len());
 	}
 
-	for mut command in commands {
-		command.apply(world);
+	for mut queue in buffer {
+		queue.apply(world);
+	}
+
+	for closed_receiver in closed_receivers {
+		world.despawn(closed_receiver);
 	}
 }
 
