@@ -1,6 +1,6 @@
-# 0.9.0-rc.1
+# 0.9.0
 
-- Updated for bevy 0.17.0-rc.1
+- Updated for bevy 0.17
 - Removed `AsyncWorld::trigger_targets()` (deprecated upstream)
 
 # 0.8.1
