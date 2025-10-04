@@ -4,7 +4,6 @@ use async_channel::Sender;
 use async_channel::TryRecvError;
 use bevy_ecs::prelude::*;
 use bevy_ecs::world::CommandQueue;
-use bevy_log::tracing::debug;
 use std::fmt;
 
 /// The object-safe equivalent of a `Box<dyn Command>`.
@@ -122,39 +121,23 @@ impl CommandQueueReceiver {
 	pub(crate) fn new(receiver: Receiver<CommandQueue>) -> Self {
 		Self(receiver)
 	}
-
-	fn enqueue_into(&self, world_queue: &mut Vec<CommandQueue>) -> Result<(), ()> {
-		loop {
-			match self.0.try_recv() {
-				Ok(command_queue) => world_queue.push(command_queue),
-				Err(TryRecvError::Closed) => break Err(()),
-				Err(TryRecvError::Empty) => break Ok(()),
-			}
-		}
-	}
 }
 
-pub(crate) fn receive_and_apply_commands(world: &mut World) {
-	let mut buffer = Vec::new();
-	let mut closed_receivers = Vec::new();
-
-	let mut query = world.query::<(Entity, &CommandQueueReceiver)>();
-	for (id, receiver) in query.iter(world) {
-		if receiver.enqueue_into(&mut buffer).is_err() {
-			closed_receivers.push(id);
+pub(crate) fn receive_and_apply_commands(
+	mut commands: Commands,
+	receivers: Query<(Entity, &CommandQueueReceiver)>,
+) {
+	for (id, receiver) in receivers.iter() {
+		loop {
+			match receiver.0.try_recv() {
+				Ok(mut command_queue) => commands.append(&mut command_queue),
+				Err(TryRecvError::Empty) => break,
+				Err(TryRecvError::Closed) => {
+					commands.entity(id).despawn();
+					break;
+				}
+			}
 		}
-	}
-
-	if !buffer.is_empty() {
-		debug!("applying {} CommandQueues", buffer.len());
-	}
-
-	for mut queue in buffer {
-		queue.apply(world);
-	}
-
-	for closed_receiver in closed_receivers {
-		world.despawn(closed_receiver);
 	}
 }
 
