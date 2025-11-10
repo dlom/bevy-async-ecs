@@ -10,13 +10,12 @@ keywords = ["bevy", "ecs", "async", "game"]
 categories = ["game-engines", "asynchronous"]
 
 [dependencies]
-bevy_app = { version = "0.17", default-features = false }
-bevy_log = { version = "0.17", default-features = false }
-bevy_platform = { version = "0.17", default-features = false }
-bevy_ecs = { version = "0.17", default-features = false }
+bevy_app = { git = "https://github.com/MalekiRe/bevy", branch = "malek/async_ecs", default-features = false }
+bevy_platform = { git = "https://github.com/MalekiRe/bevy", branch = "malek/async_ecs", default-features = false }
+bevy_ecs = { git = "https://github.com/MalekiRe/bevy", branch = "malek/async_ecs", default-features = false }
 async-channel = "2"
 
 [dev-dependencies]
 pollster = "0.4"
 rand = { version = "0.9", default-features = false, features = ["os_rng", "small_rng"] }
-bevy = "0.17"
+bevy = { git = "https://github.com/MalekiRe/bevy", branch = "malek/async_ecs" }
