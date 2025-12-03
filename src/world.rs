@@ -1,7 +1,6 @@
 use crate::CowStr;
 use crate::command::BoxedCommand;
 use crate::command::CommandQueueBuilder;
-use crate::command::CommandQueueReceiver;
 use crate::command::CommandQueueSender;
 use crate::die;
 use crate::entity::AsyncEntity;
@@ -181,12 +180,7 @@ impl From<CommandQueueSender> for AsyncWorld {
 
 impl FromWorld for AsyncWorld {
 	fn from_world(world: &mut World) -> Self {
-		let (sender, receiver) = async_channel::unbounded();
-		world.spawn((
-			CommandQueueReceiver::new(receiver),
-			Name::new("CommandQueueReceiver"),
-		));
-		CommandQueueSender::new(sender).into()
+		CommandQueueSender::new(world.id()).into()
 	}
 }
 

@@ -1,9 +1,8 @@
-use crate::die;
-use async_channel::Receiver;
-use async_channel::Sender;
-use async_channel::TryRecvError;
+use bevy_app::Last;
 use bevy_ecs::prelude::*;
 use bevy_ecs::world::CommandQueue;
+use bevy_ecs::world::WorldId;
+use bevy_malek_async::CreateEcsTask;
 use std::fmt;
 
 /// The object-safe equivalent of a `Box<dyn Command>`.
@@ -94,50 +93,28 @@ impl fmt::Debug for CommandQueueBuilder {
 ///
 /// The easiest way to get a `CommandQueueSender` is with `AsyncWorld::sender()`.
 #[derive(Clone, Debug)]
-pub struct CommandQueueSender(Sender<CommandQueue>);
+pub struct CommandQueueSender(WorldId);
 
 impl CommandQueueSender {
-	pub(crate) fn new(inner: Sender<CommandQueue>) -> Self {
+	pub(crate) fn new(inner: WorldId) -> Self {
 		Self(inner)
 	}
 
 	/// Sends an `CommandQueue` directly to the Bevy `World`, where they will be applied during
 	/// the `Last` schedule.
-	pub async fn send_queue(&self, inner_queue: CommandQueue) {
-		self.0.send(inner_queue).await.unwrap_or_else(die)
+	pub async fn send_queue(&self, mut inner_queue: CommandQueue) {
+		self.0
+			.ecs_task::<Commands>()
+			.run_system(Last, |mut commands| {
+				commands.append(&mut inner_queue);
+			})
+			.await;
 	}
 
 	/// Sends a (boxed) `Command` directly to the Bevy `World`, where they it be applied during
 	/// the `Last` schedule.
 	pub async fn send_single(&self, single: BoxedCommand) {
 		self.send_queue(single.into()).await;
-	}
-}
-
-#[derive(Component)]
-pub(crate) struct CommandQueueReceiver(Receiver<CommandQueue>);
-
-impl CommandQueueReceiver {
-	pub(crate) fn new(receiver: Receiver<CommandQueue>) -> Self {
-		Self(receiver)
-	}
-}
-
-pub(crate) fn receive_and_apply_commands(
-	mut commands: Commands,
-	receivers: Query<(Entity, &CommandQueueReceiver)>,
-) {
-	for (id, receiver) in receivers.iter() {
-		loop {
-			match receiver.0.try_recv() {
-				Ok(mut command_queue) => commands.append(&mut command_queue),
-				Err(TryRecvError::Empty) => break,
-				Err(TryRecvError::Closed) => {
-					commands.entity(id).despawn();
-					break;
-				}
-			}
-		}
 	}
 }
 
@@ -189,7 +166,10 @@ mod tests {
 		assert_eq!("BoxedCommand", debugged);
 		let debugged = format!("{:?}", CommandQueueBuilder::new(operation_sender));
 		assert_eq!(
-			"CommandQueueBuilder { inner: \"[..]\", sender: CommandQueueSender(Sender { .. }) }",
+			format!(
+				"CommandQueueBuilder {{ inner: \"[..]\", sender: CommandQueueSender({:?}) }}",
+				app.world().id()
+			),
 			debugged
 		);
 	}
@@ -232,7 +212,6 @@ mod tests {
 		let sender = async_world.sender();
 		let entity = AsyncEntity::new(Entity::PLACEHOLDER, async_world.clone());
 		let other_sender = entity.sender();
-		assert_eq!(4, sender.0.sender_count());
-		assert_eq!(4, other_sender.0.sender_count());
+		assert_eq!(other_sender.0, sender.0);
 	}
 }

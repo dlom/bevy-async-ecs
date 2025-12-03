@@ -11,9 +11,9 @@ categories = ["game-engines", "asynchronous"]
 
 [dependencies]
 bevy_app = { version = "0.17", default-features = false }
-bevy_log = { version = "0.17", default-features = false }
 bevy_platform = { version = "0.17", default-features = false }
 bevy_ecs = { version = "0.17", default-features = false }
+bevy_malek_async = "0.2.0"
 async-channel = "2"
 
 [dev-dependencies]

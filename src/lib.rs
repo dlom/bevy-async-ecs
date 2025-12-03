@@ -11,12 +11,12 @@ mod util;
 mod wait_for;
 mod world;
 
-use crate::command::receive_and_apply_commands;
 use crate::wait_for::drive_waiting_for;
 use crate::wait_for::initialize_waiters;
 use async_channel::Receiver;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use bevy_malek_async::AsyncEcsPlugin as MalekPlugin;
 
 pub use command::BoxedCommand;
 pub use command::CommandQueueBuilder;
@@ -48,8 +48,14 @@ pub struct AsyncEcsPlugin;
 
 impl Plugin for AsyncEcsPlugin {
 	fn build(&self, app: &mut App) {
+		if app.get_added_plugins::<MalekPlugin>().is_empty() {
+			app.add_plugins(MalekPlugin);
+		}
+
 		app.add_systems(PreStartup, initialize_waiters)
-			.add_systems(Last, (receive_and_apply_commands, ApplyDeferred).chain())
+			.add_systems(Last, || {
+				// nop
+			})
 			.add_systems(PostUpdate, (drive_waiting_for, ApplyDeferred).chain());
 	}
 }
