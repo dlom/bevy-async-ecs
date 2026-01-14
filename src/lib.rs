@@ -17,6 +17,12 @@ use crate::wait_for::initialize_waiters;
 use async_channel::Receiver;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use futures_lite::Stream;
+use pin_project_lite::pin_project;
+use std::pin::Pin;
+use std::task::Context;
+use std::task::Poll;
+use std::task::ready;
 
 pub use command::BoxedCommand;
 pub use command::CommandQueueBuilder;
@@ -38,8 +44,29 @@ fn die<T, E: std::fmt::Debug>(e: E) -> T {
 	panic!("invariant broken: {:?}", e)
 }
 
-async fn recv<T: Send>(receiver: Receiver<T>) -> T {
-	receiver.recv().await.unwrap_or_else(die)
+pin_project! {
+	struct WorldFuture<T> {
+		#[pin]
+		rx: Receiver<T>,
+	}
+}
+
+impl<T> Future for WorldFuture<T> {
+	type Output = T;
+
+	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+		let rx = self.project().rx;
+		let output = ready!(rx.poll_next(cx));
+		output.map(Poll::Ready).unwrap_or_else(|| {
+			bevy_log::debug!("oneshot rx was terminated, is the app closing?");
+			bevy_log::debug!("(this task will now pend until the app closes)");
+			Poll::Pending
+		})
+	}
+}
+
+async fn recv<T: Send>(rx: Receiver<T>) -> T {
+	WorldFuture { rx }.await
 }
 
 /// Adds asynchronous ECS operations to Bevy `App`s.
@@ -58,14 +85,6 @@ impl Plugin for AsyncEcsPlugin {
 mod tests {
 	use crate::recv;
 	use pollster::block_on;
-
-	#[test]
-	#[should_panic(expected = "invariant broken: RecvError")]
-	fn die() {
-		let (tx, rx) = async_channel::bounded::<()>(1);
-		tx.close();
-		block_on(recv(rx));
-	}
 
 	#[test]
 	fn no_die() {

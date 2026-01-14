@@ -1,6 +1,6 @@
 [package]
 name = "bevy-async-ecs"
-version = "0.9.0"
+version = "0.10.0"
 authors = ["Mark Old <dlom234@gmail.com>"]
 edition = "2024"
 license = "MIT"
@@ -10,13 +10,15 @@ keywords = ["bevy", "ecs", "async", "game"]
 categories = ["game-engines", "asynchronous"]
 
 [dependencies]
-bevy_app = { version = "0.17", default-features = false }
-bevy_log = { version = "0.17", default-features = false }
-bevy_platform = { version = "0.17", default-features = false }
-bevy_ecs = { version = "0.17", default-features = false }
+bevy_app = { version = "0.18", default-features = false }
+bevy_log = { version = "0.18", default-features = false }
+bevy_platform = { version = "0.18", default-features = false }
+bevy_ecs = { version = "0.18", default-features = false }
 async-channel = "2"
+futures-lite = "2"
+pin-project-lite = "0.2"
 
 [dev-dependencies]
 pollster = "0.4"
 rand = { version = "0.9", default-features = false, features = ["os_rng", "small_rng"] }
-bevy = "0.17"
+bevy = "0.18"

@@ -1,3 +1,8 @@
+# 0.10.0
+
+- Updated for bevy 0.18
+- Receiving values in the async context should panic a lot less when the app is closing or the main bevy world otherwise doesn't exist anymore
+
 # 0.9.0
 
 - Updated for bevy 0.17
